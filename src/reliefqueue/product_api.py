@@ -13,7 +13,7 @@ import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, unquote, urlparse
 
 from .assignment import suggest_assignments
 from .cli import ROOT, build_cases
@@ -878,15 +878,38 @@ def action_map_check(root: Path = ROOT) -> int:
     return 0
 
 
+DASHBOARD_DIST = ROOT / "dashboard" / "dist"
+
+# Client-side routed SPA path prefixes. Any GET that doesn't match a static
+# file under dashboard/dist and doesn't start with /api/ or /healthz falls
+# back to index.html so the dashboard's own router can render the route.
+SPA_ROUTE_PREFIXES = (
+    "/dashboard",
+    "/field",
+    "/local-coordinator",
+    "/internal/classic-dashboard",
+)
+
+
 def serve(host: str, port: int, root: Path = ROOT) -> int:
     try:
         init_product_live_state(root)
     except Exception as exc:
         print(f"ReliefQueue product API using deterministic local facade: {exc}")
 
+    dist_dir = root / "dashboard" / "dist"
+
     class Handler(BaseHTTPRequestHandler):
         def do_GET(self) -> None:  # noqa: N802
-            self._handle("GET")
+            parsed = urlparse(self.path)
+            route = parsed.path.rstrip("/") or "/"
+            if route == "/healthz":
+                self._json(200, {"status": "ok"})
+                return
+            if route.startswith("/api/product/"):
+                self._handle("GET")
+                return
+            self._serve_static(parsed.path)
 
         def do_POST(self) -> None:  # noqa: N802
             self._handle("POST")
@@ -929,6 +952,49 @@ def serve(host: str, port: int, root: Path = ROOT) -> int:
             self.end_headers()
             self.wfile.write(payload)
 
+        def _serve_static(self, raw_path: str) -> None:
+            if not dist_dir.is_dir():
+                self._json(
+                    503,
+                    {
+                        "error": "dashboard build not found; run `make replit-build` "
+                        "(or `make dashboard-build`) before serving."
+                    },
+                )
+                return
+            url_path = unquote(urlparse(raw_path).path)
+            relative = url_path.lstrip("/")
+            requested = (dist_dir / relative).resolve() if relative else dist_dir / "index.html"
+            is_asset_request = "." in Path(relative).name
+            try:
+                requested.relative_to(dist_dir.resolve())
+            except ValueError:
+                self.send_error(404, "Not found")
+                return
+            if requested.is_file():
+                self._send_file(requested)
+                return
+            if is_asset_request:
+                self.send_error(404, "Not found")
+                return
+            if url_path == "/" or any(
+                url_path == prefix or url_path.startswith(prefix + "/") for prefix in SPA_ROUTE_PREFIXES
+            ):
+                self._send_file(dist_dir / "index.html")
+                return
+            self.send_error(404, "Not found")
+
+        def _send_file(self, file_path: Path) -> None:
+            content_type, _ = mimetypes.guess_type(str(file_path))
+            raw = file_path.read_bytes()
+            self.send_response(200)
+            self.send_header("Content-Type", content_type or "application/octet-stream")
+            self.send_header("Content-Length", str(len(raw)))
+            if file_path.name == "index.html":
+                self.send_header("Cache-Control", "no-store")
+            self.end_headers()
+            self.wfile.write(raw)
+
     server = ThreadingHTTPServer((host, port), Handler)
     print(f"ReliefQueue product API: http://{host}:{port}")
     thread = threading.Thread(target=server.serve_forever, daemon=True)
@@ -943,8 +1009,16 @@ def serve(host: str, port: int, root: Path = ROOT) -> int:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("command", choices=["init", "smoke", "live-smoke", "action-map-check", "serve"])
-    parser.add_argument("--host", default="127.0.0.1")
-    parser.add_argument("--port", type=int, default=int(os.environ.get("RELIEFQUEUE_PRODUCT_API_PORT", "8765")))
+    parser.add_argument("--host", default=os.environ.get("RELIEFQUEUE_PRODUCT_API_HOST", "127.0.0.1"))
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=int(
+            os.environ.get("PORT")
+            or os.environ.get("RELIEFQUEUE_PRODUCT_API_PORT")
+            or "5000"
+        ),
+    )
     args = parser.parse_args(argv)
     if args.command == "init":
         print(json.dumps(init_product_live_state(), indent=2))
