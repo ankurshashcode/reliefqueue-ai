@@ -1,0 +1,89 @@
+[
+  {
+    "zone_id": "zone-ward-01",
+    "zone_name": "Ward 1 Flood Belt",
+    "state": "Synthetic State",
+    "district": "Synthetic District",
+    "city_or_block": "Synthetic City",
+    "ward_or_village": "Ward 1",
+    "landmarks": [
+      "School No. 3",
+      "Main Bridge",
+      "River Bank"
+    ],
+    "aliases": [
+      "school 3",
+      "school no 3",
+      "ward one",
+      "ward 1",
+      "main bridge area",
+      "riverbank",
+      "river bank"
+    ],
+    "agency_owner_optional": "municipal_team_a"
+  },
+  {
+    "zone_id": "zone-ward-02",
+    "zone_name": "Ward 2 Relief Camp Zone",
+    "state": "Synthetic State",
+    "district": "Synthetic District",
+    "city_or_block": "Synthetic City",
+    "ward_or_village": "Ward 2",
+    "landmarks": [
+      "Community Hall",
+      "Relief Camp A"
+    ],
+    "aliases": [
+      "ward two",
+      "ward 2",
+      "camp a",
+      "community hall ward 2"
+    ],
+    "agency_owner_optional": "ngo_food_cluster"
+  },
+  {
+    "zone_id": "zone-village-03",
+    "zone_name": "Village 3 Health Support Zone",
+    "state": "Synthetic State",
+    "district": "Synthetic District",
+    "city_or_block": "Synthetic Block",
+    "ward_or_village": "Village 3",
+    "landmarks": [
+      "Hanuman Temple",
+      "Primary Health Centre",
+      "Old Banyan"
+    ],
+    "aliases": [
+      "hanuman mandir",
+      "village three",
+      "village 3",
+      "phc",
+      "primary health center",
+      "banyan area"
+    ],
+    "agency_owner_optional": "health_response_cell"
+  },
+  {
+    "zone_id": "zone-ward-04",
+    "zone_name": "Ward 4 Logistics and Evacuation Zone",
+    "state": "Synthetic State",
+    "district": "Synthetic District",
+    "city_or_block": "Synthetic City",
+    "ward_or_village": "Ward 4",
+    "landmarks": [
+      "Old Bus Stand",
+      "Clinic Road",
+      "Warehouse Lane"
+    ],
+    "aliases": [
+      "bus stand",
+      "old bus stand",
+      "ward four",
+      "ward 4",
+      "warehouse",
+      "warehouse lane",
+      "clinic road"
+    ],
+    "agency_owner_optional": "district_logistics_team"
+  }
+]

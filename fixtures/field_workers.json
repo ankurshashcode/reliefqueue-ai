@@ -1,0 +1,162 @@
+[
+  {
+    "worker_id": "worker-alpha-boat",
+    "display_name_safe": "Team Alpha Boat",
+    "agency_id": "municipal_team_a",
+    "authorized_zone_ids": [
+      "zone-ward-01"
+    ],
+    "skills": [
+      "general_relief",
+      "boat_rescue",
+      "flood_rescue"
+    ],
+    "current_status": "available",
+    "capacity_active_cases": 4,
+    "current_active_cases": 1,
+    "transport": "boat",
+    "can_handle_medical_cases": false,
+    "can_handle_children_cases": true,
+    "can_cross_flood_water": true,
+    "shift_start_optional": "08:00",
+    "shift_end_optional": "20:00"
+  },
+  {
+    "worker_id": "worker-beta-medical",
+    "display_name_safe": "Team Beta Medical",
+    "agency_id": "health_response_cell",
+    "authorized_zone_ids": [
+      "zone-village-03",
+      "zone-ward-04"
+    ],
+    "skills": [
+      "medical_first_response",
+      "vulnerable_person_support",
+      "evacuation_support"
+    ],
+    "current_status": "available",
+    "capacity_active_cases": 3,
+    "current_active_cases": 1,
+    "transport": "ambulance",
+    "can_handle_medical_cases": true,
+    "can_handle_children_cases": true,
+    "can_cross_flood_water": false,
+    "shift_start_optional": "07:00",
+    "shift_end_optional": "19:00"
+  },
+  {
+    "worker_id": "worker-gamma-child",
+    "display_name_safe": "Team Gamma Child Support",
+    "agency_id": "ngo_child_support",
+    "authorized_zone_ids": [
+      "zone-ward-01",
+      "zone-village-03"
+    ],
+    "skills": [
+      "child_support",
+      "vulnerable_person_support",
+      "general_relief"
+    ],
+    "current_status": "available",
+    "capacity_active_cases": 2,
+    "current_active_cases": 0,
+    "transport": "bike",
+    "can_handle_medical_cases": false,
+    "can_handle_children_cases": true,
+    "can_cross_flood_water": false,
+    "shift_start_optional": "09:00",
+    "shift_end_optional": "18:00"
+  },
+  {
+    "worker_id": "worker-delta-food",
+    "display_name_safe": "Team Delta Food",
+    "agency_id": "ngo_food_cluster",
+    "authorized_zone_ids": [
+      "zone-ward-02",
+      "zone-village-03"
+    ],
+    "skills": [
+      "general_relief",
+      "food_water_distribution",
+      "shelter_support"
+    ],
+    "current_status": "busy",
+    "capacity_active_cases": 3,
+    "current_active_cases": 3,
+    "transport": "truck",
+    "can_handle_medical_cases": false,
+    "can_handle_children_cases": false,
+    "can_cross_flood_water": false,
+    "shift_start_optional": "08:00",
+    "shift_end_optional": "21:00"
+  },
+  {
+    "worker_id": "worker-epsilon-offline",
+    "display_name_safe": "Team Epsilon Offline",
+    "agency_id": "municipal_team_a",
+    "authorized_zone_ids": [
+      "zone-ward-01"
+    ],
+    "skills": [
+      "general_relief",
+      "flood_rescue"
+    ],
+    "current_status": "offline",
+    "capacity_active_cases": 3,
+    "current_active_cases": 0,
+    "transport": "boat",
+    "can_handle_medical_cases": false,
+    "can_handle_children_cases": false,
+    "can_cross_flood_water": true,
+    "shift_start_optional": "08:00",
+    "shift_end_optional": "20:00"
+  },
+  {
+    "worker_id": "worker-zeta-truck",
+    "display_name_safe": "Team Zeta Truck",
+    "agency_id": "district_logistics_team",
+    "authorized_zone_ids": [
+      "zone-ward-04",
+      "zone-ward-02"
+    ],
+    "skills": [
+      "general_relief",
+      "evacuation_support",
+      "logistics_transport",
+      "shelter_support"
+    ],
+    "current_status": "available",
+    "capacity_active_cases": 4,
+    "current_active_cases": 1,
+    "transport": "truck",
+    "can_handle_medical_cases": false,
+    "can_handle_children_cases": false,
+    "can_cross_flood_water": false,
+    "shift_start_optional": "06:00",
+    "shift_end_optional": "22:00"
+  },
+  {
+    "worker_id": "worker-eta-review",
+    "display_name_safe": "Coordinator Eta Review Desk",
+    "agency_id": "district_control_room",
+    "authorized_zone_ids": [
+      "zone-ward-01",
+      "zone-ward-02",
+      "zone-village-03",
+      "zone-ward-04"
+    ],
+    "skills": [
+      "coordinator_review",
+      "general_relief"
+    ],
+    "current_status": "available",
+    "capacity_active_cases": 10,
+    "current_active_cases": 2,
+    "transport": "none",
+    "can_handle_medical_cases": false,
+    "can_handle_children_cases": false,
+    "can_cross_flood_water": false,
+    "shift_start_optional": "00:00",
+    "shift_end_optional": "23:59"
+  }
+]

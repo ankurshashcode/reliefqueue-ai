@@ -1,0 +1,33 @@
+__pycache__/
+src/reliefqueue/__pycache__/
+*.py[cod]
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.token
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+htmlcov/
+.coverage
+node_modules/
+dashboard/dist/
+dashboard/public/reports/
+dashboard/public/fixtures/
+.reliefqueue-slice03-validation/
+reports/latest/
+reports/batch-*/
+reports-for-review/
+
+# Local AI/Ollama context packets
+var/ai-context/
+
+# ReliefQueue generated click-smoke evidence; keep as validation output, not source.
+reports/product-click-smoke/
+reports/website-readiness/
+reports/release-freeze/
+reports/release-freeze-baseline/
+
+var/evidence-store/

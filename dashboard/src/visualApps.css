@@ -1,0 +1,17 @@
+/* Compatibility file retained for existing imports. The visual product UI comes from
+   the native AI Studio Command Center and Field Coordinator source trees. */
+html,
+body,
+#root {
+  min-height: 100%;
+  width: 100%;
+}
+body {
+  margin: 0;
+}
+#root:empty::before {
+  content: "ReliefQueue AI app is starting...";
+  display: block;
+  padding: 2rem;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+}

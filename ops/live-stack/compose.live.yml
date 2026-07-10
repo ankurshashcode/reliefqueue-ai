@@ -1,0 +1,49 @@
+name: ${RELIEFQUEUE_LIVE_STACK_PROJECT:-reliefqueue-live}
+
+services:
+  postgis:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_USER: reliefqueue
+      POSTGRES_PASSWORD: reliefqueue
+      POSTGRES_DB: reliefqueue
+    ports:
+      - "127.0.0.1:54329:5432"
+    volumes:
+      - reliefqueue_postgis_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U reliefqueue -d reliefqueue"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "127.0.0.1:63799:6379"
+    volumes:
+      - reliefqueue_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  nats:
+    image: nats:2-alpine
+    command: ["-js", "-sd", "/data", "-m", "8222"]
+    ports:
+      - "127.0.0.1:42299:4222"
+    volumes:
+      - reliefqueue_nats_data:/data
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8222/healthz"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  reliefqueue_postgis_data:
+  reliefqueue_redis_data:
+  reliefqueue_nats_data:

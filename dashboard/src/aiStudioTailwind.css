@@ -1,0 +1,201 @@
+@import url('https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+/*
+  Tailwind v4 must be processed by @tailwindcss/vite. The previous hotfix imported
+  this file but did not guarantee that Vite was using the Tailwind plugin. This file
+  also explicitly registers and safelists the classes used by the runtime style probe.
+*/
+@import "tailwindcss" source("./");
+@source "./commandStudio";
+@source "./fieldStudio";
+@source "./main.tsx";
+@source inline("flex bg-slate-900 text-white p-4 rounded-xl gap-2");
+@source inline("bg-slate-{50,100,200,300,400,500,600,700,800,900,950}");
+@source inline("text-slate-{50,100,200,300,400,500,600,700,800,900,950}");
+@source inline("border-slate-{100,200,300,400,500,600,700,800}");
+@source inline("bg-{white,black,background,surface,surface-container,surface-container-high,surface-container-low,surface-variant,primary,primary-container,secondary,secondary-container,error,error-container}");
+@source inline("text-{white,black,on-background,on-surface,on-surface-variant,on-primary,on-primary-container,on-secondary,on-secondary-container,on-error,on-error-container}");
+
+@theme {
+  --font-sans: "Inter", "Atkinson Hyperlegible Next", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  --font-headline-md: "Atkinson Hyperlegible Next", sans-serif;
+  --font-label-md: "Atkinson Hyperlegible Next", sans-serif;
+  --font-body-lg: "Atkinson Hyperlegible Next", sans-serif;
+  --font-headline-sm: "Atkinson Hyperlegible Next", sans-serif;
+  --font-label-lg: "Atkinson Hyperlegible Next", sans-serif;
+  --font-headline-lg: "Atkinson Hyperlegible Next", sans-serif;
+  --font-headline-lg-mobile: "Atkinson Hyperlegible Next", sans-serif;
+  --font-body-md: "Atkinson Hyperlegible Next", sans-serif;
+
+  --color-slate-950: #020617;
+  --color-slate-900: #0f172a;
+  --color-slate-800: #1e293b;
+  --color-slate-700: #334155;
+  --color-slate-600: #475569;
+  --color-slate-500: #64748b;
+  --color-slate-400: #94a3b8;
+  --color-slate-300: #cbd5e1;
+  --color-slate-200: #e2e8f0;
+  --color-slate-100: #f1f5f9;
+  --color-slate-50: #f8fafc;
+
+  --color-rq-primary: #2563eb;
+  --color-rq-primary-hover: #1d4ed8;
+  --color-rq-amber: #d97706;
+  --color-rq-amber-light: #fef3c7;
+  --color-rq-red: #dc2626;
+  --color-rq-red-light: #fee2e2;
+  --color-rq-emerald: #059669;
+  --color-rq-emerald-light: #d1fae5;
+
+  --color-on-surface-variant: #454652;
+  --color-background: #f3faff;
+  --color-on-primary-container: #8690ee;
+  --color-on-primary: #ffffff;
+  --color-surface: #f3faff;
+  --color-primary-container: #1a237e;
+  --color-error: #ba1a1a;
+  --color-error-container: #ffdad6;
+  --color-on-error-container: #93000a;
+  --color-surface-container-high: #d5ecf8;
+  --color-surface-container-low: #e6f6ff;
+  --color-surface-variant: #cfe6f2;
+  --color-surface-container: #dbf1fe;
+  --color-primary: #000666;
+  --color-on-error: #ffffff;
+  --color-on-secondary: #ffffff;
+  --color-secondary: #a83900;
+  --color-secondary-container: #fc6018;
+  --color-on-secondary-container: #531800;
+  --color-outline: #767683;
+  --color-outline-variant: #c6c5d4;
+  --color-on-background: #071e27;
+  --color-on-surface: #071e27;
+  --color-tertiary: #002103;
+  --color-on-tertiary: #ffffff;
+  --color-tertiary-container: #003909;
+  --color-on-tertiary-container: #5aa958;
+  --color-tertiary-fixed-dim: #88d982;
+  --color-secondary-fixed: #ffdbcf;
+  --color-primary-fixed: #e0e0ff;
+  --color-primary-fixed-dim: #c2c2ff;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+  width: 100%;
+  margin: 0;
+}
+
+body {
+  min-height: 100vh;
+  font-family: "Inter", "Atkinson Hyperlegible Next", ui-sans-serif, system-ui, sans-serif;
+  background: #f8fafc;
+  color: #0f172a;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+button,
+a,
+[role="button"],
+[role="link"],
+.cursor-pointer {
+  cursor: pointer;
+}
+
+/* A zero-impact static probe. Keeping these exact class tokens in source protects
+   the readiness style probe from Tailwind's dynamic-class scanning limitation. */
+.rq-static-tailwind-probe {
+  position: fixed;
+  left: -9999px;
+  top: -9999px;
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+
+.print-only {
+  display: none;
+}
+
+@page {
+  margin: 12mm;
+}
+
+@media print {
+  html,
+  body,
+  #root {
+    min-height: auto;
+    height: auto;
+    overflow: visible !important;
+    background: white !important;
+    color: #111827 !important;
+  }
+
+  body {
+    font-size: 11pt;
+  }
+
+  aside,
+  header,
+  nav,
+  button,
+  [role="dialog"],
+  .no-print,
+  .fixed.bottom-0,
+  .fixed.bottom-24 {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  main,
+  section,
+  article,
+  [data-print-surface] {
+    break-inside: avoid-page;
+    box-shadow: none !important;
+  }
+
+  [data-print-surface] {
+    overflow: visible !important;
+    border: 1px solid #9ca3af !important;
+    padding: 12pt !important;
+    background: white !important;
+  }
+
+  * {
+    color-adjust: exact;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+}

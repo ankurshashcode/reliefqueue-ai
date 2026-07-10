@@ -1,0 +1,88 @@
+{
+  "purpose": "Non-exhaustive expected behaviour contract for Slice 1 tests. Exact wording/counts may differ, but these invariants must hold.",
+  "input_files": [
+    "fixtures/reliefqueue_seed_reports.jsonl",
+    "fixtures/operation_zones.json",
+    "fixtures/field_workers.json"
+  ],
+  "minimum_report_count": 24,
+  "must_create_case_for_every_report": true,
+  "must_detect_duplicate_report_groups": [
+    [
+      "seed-001",
+      "seed-002"
+    ],
+    [
+      "seed-012",
+      "seed-013"
+    ]
+  ],
+  "must_tag_known_zones": {
+    "seed-001": "zone-ward-01",
+    "seed-003": "zone-village-03",
+    "seed-004": "zone-ward-02",
+    "seed-016": "zone-ward-04",
+    "seed-023": "zone-ward-04"
+  },
+  "must_not_mark_assignment_ready": [
+    "seed-006"
+  ],
+  "must_have_red_or_review_high_attention": [
+    "seed-001",
+    "seed-003",
+    "seed-005",
+    "seed-009",
+    "seed-010",
+    "seed-012",
+    "seed-014",
+    "seed-016",
+    "seed-021",
+    "seed-022",
+    "seed-024"
+  ],
+  "must_include_vulnerable_flags": {
+    "seed-001": [
+      "child"
+    ],
+    "seed-003": [
+      "pregnant"
+    ],
+    "seed-005": [
+      "elderly"
+    ],
+    "seed-014": [
+      "elderly",
+      "disabled"
+    ],
+    "seed-016": [
+      "pregnant"
+    ]
+  },
+  "assignment_constraints_to_test": [
+    "offline workers are never suggested",
+    "busy workers or workers at capacity are not suggested",
+    "unknown-location cases are not suggested for field assignment",
+    "flood/boat cases prefer workers that can cross flood water or have boat transport",
+    "medical cases prefer workers with medical_first_response or can_handle_medical_cases"
+  ],
+  "public_export_forbidden_fields": [
+    "raw_text_private",
+    "reporter_name_private_optional",
+    "reporter_phone_private_optional",
+    "media_note_private_optional"
+  ],
+  "public_export_forbidden_patterns": [
+    "\\+91[0-9]{10}",
+    "Synthetic Asha",
+    "Synthetic Ravi",
+    "Synthetic Nurse"
+  ],
+  "required_report_outputs": [
+    "reports/latest/summary.json",
+    "reports/latest/cases.jsonl",
+    "reports/latest/validation.md",
+    "reports/latest/zone_summary.csv",
+    "reports/latest/field_assignment_candidates.jsonl",
+    "reports/latest/public_redacted_cases.jsonl"
+  ]
+}

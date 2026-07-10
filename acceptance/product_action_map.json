@@ -1,0 +1,508 @@
+{
+  "contract": "reliefqueue-product-action-map/v1",
+  "actions": [
+    {
+      "action_id": "command.open_case_detail",
+      "surface": "Command Center",
+      "route": "/dashboard/assignments",
+      "action_type": "open_drawer_or_page",
+      "selector": "[data-action-id=\"command.open_case_detail\"]",
+      "expected_visible_result": "case detail drawer/page opens with selected case title, priority, status, assignment, audit/timeline, and available next actions",
+      "result_selector": "[data-result-id=\"command.case-detail\"]",
+      "provider_status": "panel",
+      "test_coverage": [
+        "command-center-click-smoke",
+        "product-complete-smoke"
+      ]
+    },
+    {
+      "action_id": "command.assign_or_reassign_worker",
+      "surface": "Command Center",
+      "route": "/dashboard/assignments",
+      "action_type": "mutate_local_state",
+      "selector": "[data-action-id=\"command.assign_or_reassign_worker\"]",
+      "expected_visible_result": "selected case assignment visibly changes and audit/timeline records the assignment",
+      "result_selector": "[data-result-id=\"command.assignment\"]",
+      "provider_status": "local_state",
+      "test_coverage": [
+        "command-center-click-smoke",
+        "product-complete-smoke"
+      ]
+    },
+    {
+      "action_id": "command.set_case_in_progress",
+      "surface": "Command Center",
+      "route": "/dashboard/assignments",
+      "action_type": "mutate_local_state",
+      "selector": "[data-action-id=\"command.set_case_in_progress\"]",
+      "expected_visible_result": "case status chip visibly changes to in progress or equivalent and audit/timeline records the status mutation",
+      "result_selector": "[data-result-id=\"command.status\"]",
+      "provider_status": "local_state",
+      "test_coverage": [
+        "command-center-click-smoke",
+        "product-complete-smoke"
+      ]
+    },
+    {
+      "action_id": "command.queue_local_message",
+      "surface": "Command Center",
+      "route": "/dashboard/assignments",
+      "action_type": "local_mock_provider",
+      "selector": "[data-action-id=\"command.queue_local_message\"]",
+      "expected_visible_result": "message is added to a visible local/mock outbox with pending/delivered-local status and paid provider caveat if relevant",
+      "result_selector": "[data-result-id=\"command.message\"]",
+      "provider_status": "local_mock",
+      "test_coverage": [
+        "command-center-click-smoke",
+        "product-complete-smoke"
+      ]
+    },
+    {
+      "action_id": "command.run_deterministic_drill",
+      "surface": "Command Center",
+      "route": "/dashboard?source=latest",
+      "action_type": "trigger_deterministic_drill",
+      "selector": "[data-action-id=\"command.run_deterministic_drill\"]",
+      "expected_visible_result": "drill result panel/history updates with deterministic result, timestamp, and reviewable summary",
+      "result_selector": "[data-result-id=\"command.drill\"]",
+      "provider_status": "local_state",
+      "test_coverage": [
+        "command-center-click-smoke",
+        "product-complete-smoke"
+      ]
+    },
+    {
+      "action_id": "command.request_review_required_ai_advisory",
+      "surface": "Command Center",
+      "route": "/dashboard/assignments",
+      "action_type": "local_mock_ai_advisory",
+      "selector": "[data-action-id=\"command.request_review_required_ai_advisory\"]",
+      "expected_visible_result": "AI advisory panel updates with review-required advisory result and no claim of real GPU inference unless configured",
+      "result_selector": "[data-result-id=\"command.ai\"]",
+      "provider_status": "local_mock",
+      "test_coverage": [
+        "command-center-click-smoke",
+        "product-complete-smoke"
+      ]
+    },
+    {
+      "action_id": "command.nav_overview",
+      "surface": "Command Center",
+      "route": "/dashboard?source=latest",
+      "action_type": "open_panel",
+      "selector": "[data-action-id=\"command.nav_overview\"]",
+      "expected_visible_result": "overview panel shows operational summary, case counts, queue/worker/system health, and latest action log",
+      "result_selector": "[data-result-id=\"command.active-panel\"]",
+      "provider_status": "panel",
+      "test_coverage": [
+        "command-center-click-smoke",
+        "product-complete-smoke"
+      ]
+    },
+    {
+      "action_id": "command.nav_assignments",
+      "surface": "Command Center",
+      "route": "/dashboard?source=latest",
+      "action_type": "open_panel",
+      "selector": "[data-action-id=\"command.nav_assignments\"]",
+      "expected_visible_result": "assignments panel shows assignment board with workers, assigned cases, and reassignment controls",
+      "result_selector": "[data-result-id=\"command.active-panel\"]",
+      "provider_status": "panel",
+      "test_coverage": [
+        "command-center-click-smoke",
+        "product-complete-smoke"
+      ]
+    },
+    {
+      "action_id": "command.nav_field_sync",
+      "surface": "Command Center",
+      "route": "/dashboard?source=latest",
+      "action_type": "open_panel",
+      "selector": "[data-action-id=\"command.nav_field_sync\"]",
+      "expected_visible_result": "field sync panel shows worker/device sync state, pending queue, and last sync events",
+      "result_selector": "[data-result-id=\"command.active-panel\"]",
+      "provider_status": "panel",
+      "test_coverage": [
+        "command-center-click-smoke",
+        "product-complete-smoke"
+      ]
+    },
+    {
+      "action_id": "command.nav_scenario",
+      "surface": "Command Center",
+      "route": "/dashboard?source=latest",
+      "action_type": "open_panel",
+      "selector": "[data-action-id=\"command.nav_scenario\"]",
+      "expected_visible_result": "scenario panel shows profile, zone, hub, radius, needs, and blocked/safe area summary with link to local coordinator ownership",
+      "result_selector": "[data-result-id=\"command.active-panel\"]",
+      "provider_status": "panel",
+      "test_coverage": [
+        "command-center-click-smoke",
+        "product-complete-smoke"
+      ]
+    },
+    {
+      "action_id": "command.nav_ai_control",
+      "surface": "Command Center",
+      "route": "/dashboard?source=latest",
+      "action_type": "open_panel",
+      "selector": "[data-action-id=\"command.nav_ai_control\"]",
+      "expected_visible_result": "AI control panel shows advisory mode, review-required status, queue state, and local/mock/GPU availability clearly",
+      "result_selector": "[data-result-id=\"command.active-panel\"]",
+      "provider_status": "panel",
+      "test_coverage": [
+        "command-center-click-smoke",
+        "product-complete-smoke"
+      ]
+    },
+    {
+      "action_id": "command.nav_quality",
+      "surface": "Command Center",
+      "route": "/dashboard?source=latest",
+      "action_type": "open_panel",
+      "selector": "[data-action-id=\"command.nav_quality\"]",
+      "expected_visible_result": "quality panel shows human-review queue, warnings, and validation/completion status",
+      "result_selector": "[data-result-id=\"command.active-panel\"]",
+      "provider_status": "panel",
+      "test_coverage": [
+        "command-center-click-smoke",
+        "product-complete-smoke"
+      ]
+    },
+    {
+      "action_id": "command.nav_audit",
+      "surface": "Command Center",
+      "route": "/dashboard?source=latest",
+      "action_type": "open_panel",
+      "selector": "[data-action-id=\"command.nav_audit\"]",
+      "expected_visible_result": "audit panel shows immutable-looking event log for assignments, status, messages, evidence, drills, and AI advisory requests",
+      "result_selector": "[data-result-id=\"command.active-panel\"]",
+      "provider_status": "panel",
+      "test_coverage": [
+        "command-center-click-smoke",
+        "product-complete-smoke"
+      ]
+    },
+    {
+      "action_id": "command.paid_sms_disabled",
+      "surface": "Command Center",
+      "route": "/dashboard/assignments",
+      "action_type": "paid_external_disabled",
+      "selector": "[data-action-id=\"command.paid_sms_disabled\"]",
+      "expected_visible_result": "paid SMS/WhatsApp/call action is visibly disabled with explanation that local/mock outbox works but paid provider is not configured",
+      "result_selector": "[data-result-id=\"command.paid-sms\"]",
+      "provider_status": "paid_disabled",
+      "test_coverage": [
+        "command-center-click-smoke",
+        "product-complete-smoke"
+      ]
+    },
+    {
+      "action_id": "field.open_case_detail",
+      "surface": "Field Worker",
+      "route": "/field/my-cases?worker_id=worker-alpha-boat",
+      "action_type": "open_drawer_or_page",
+      "selector": "[data-action-id=\"field.open_case_detail\"]",
+      "expected_visible_result": "field case detail opens with beneficiary/location/need/priority/status and available field actions",
+      "result_selector": "[data-result-id=\"field.detail\"]",
+      "provider_status": "panel",
+      "test_coverage": [
+        "field-app-click-smoke",
+        "product-complete-smoke"
+      ]
+    },
+    {
+      "action_id": "field.back_to_case_list",
+      "surface": "Field Worker",
+      "route": "/field/cases/RQ-1042",
+      "action_type": "navigate",
+      "selector": "[data-action-id=\"field.back_to_case_list\"]",
+      "expected_visible_result": "field app returns to assigned case list with current local state visible",
+      "result_selector": "[data-result-id=\"field.case-list\"]",
+      "provider_status": "navigation",
+      "test_coverage": [
+        "field-app-click-smoke",
+        "product-complete-smoke"
+      ]
+    },
+    {
+      "action_id": "field.acknowledge_assignment",
+      "surface": "Field Worker",
+      "route": "/field/cases/RQ-1042",
+      "action_type": "mutate_local_state",
+      "selector": "[data-action-id=\"field.acknowledge_assignment\"]",
+      "expected_visible_result": "assignment acknowledgement chip/timeline/outbox visibly updates",
+      "result_selector": "[data-result-id=\"field.action-log\"]",
+      "provider_status": "local_state",
+      "test_coverage": [
+        "field-app-click-smoke",
+        "product-complete-smoke"
+      ]
+    },
+    {
+      "action_id": "field.start_or_accept_work",
+      "surface": "Field Worker",
+      "route": "/field/cases/RQ-1042",
+      "action_type": "mutate_local_state",
+      "selector": "[data-action-id=\"field.start_or_accept_work\"]",
+      "expected_visible_result": "case moves to accepted/en route/in progress state with local pending sync indicator if offline/local",
+      "result_selector": "[data-result-id=\"field.action-log\"]",
+      "provider_status": "local_state",
+      "test_coverage": [
+        "field-app-click-smoke",
+        "product-complete-smoke"
+      ]
+    },
+    {
+      "action_id": "field.add_note",
+      "surface": "Field Worker",
+      "route": "/field/cases/RQ-1042",
+      "action_type": "mutate_local_state",
+      "selector": "[data-action-id=\"field.add_note\"]",
+      "expected_visible_result": "field note appears in visible timeline/outbox and survives browser reload through the durable local queue",
+      "result_selector": "[data-result-id=\"field.action-log\"]",
+      "provider_status": "local_state",
+      "test_coverage": [
+        "field-app-click-smoke",
+        "product-complete-smoke"
+      ]
+    },
+    {
+      "action_id": "field.add_evidence_metadata",
+      "surface": "Field Worker",
+      "route": "/field/cases/RQ-1042",
+      "action_type": "local_mock_evidence",
+      "selector": "[data-action-id=\"field.add_evidence_metadata\"]",
+      "expected_visible_result": "real evidence file bytes upload through the product API and visible result mentions checksum, size, MIME, actor, case link, and retrieval path",
+      "result_selector": "[data-result-id=\"field.action-log\"]",
+      "provider_status": "local_mock",
+      "test_coverage": [
+        "field-app-click-smoke",
+        "product-complete-smoke"
+      ]
+    },
+    {
+      "action_id": "field.mark_complete_or_delivered",
+      "surface": "Field Worker",
+      "route": "/field/cases/RQ-1042",
+      "action_type": "mutate_local_state",
+      "selector": "[data-action-id=\"field.mark_complete_or_delivered\"]",
+      "expected_visible_result": "case status visibly changes to complete/delivered and dashboard-sync/outbox state records it",
+      "result_selector": "[data-result-id=\"field.action-log\"]",
+      "provider_status": "local_state",
+      "test_coverage": [
+        "field-app-click-smoke",
+        "product-complete-smoke"
+      ]
+    },
+    {
+      "action_id": "field.mark_blocked_or_needs_help",
+      "surface": "Field Worker",
+      "route": "/field/cases/RQ-1042",
+      "action_type": "mutate_local_state",
+      "selector": "[data-action-id=\"field.mark_blocked_or_needs_help\"]",
+      "expected_visible_result": "case status visibly changes to blocked/needs help and local coordinator/command review indicator updates",
+      "result_selector": "[data-result-id=\"field.action-log\"]",
+      "provider_status": "local_state",
+      "test_coverage": [
+        "field-app-click-smoke",
+        "product-complete-smoke"
+      ]
+    },
+    {
+      "action_id": "field.review_outbox",
+      "surface": "Field Worker",
+      "route": "/field/cases/RQ-1042",
+      "action_type": "open_panel",
+      "selector": "[data-action-id=\"field.review_outbox\"]",
+      "expected_visible_result": "field outbox panel opens showing pending local actions/messages/evidence/status updates",
+      "result_selector": "[data-result-id=\"field.outbox\"]",
+      "provider_status": "panel",
+      "test_coverage": [
+        "field-app-click-smoke",
+        "product-complete-smoke"
+      ]
+    },
+    {
+      "action_id": "field.sync_pending_actions",
+      "surface": "Field Worker",
+      "route": "/field/outbox",
+      "action_type": "local_sync",
+      "selector": "[data-action-id=\"field.sync_pending_actions\"]",
+      "expected_visible_result": "sync action visibly changes pending/replayed/failed queue status and reports conflict-safe replay or local offline-safe pending state",
+      "result_selector": "[data-result-id=\"field.outbox\"]",
+      "provider_status": "local_state",
+      "test_coverage": [
+        "field-app-click-smoke",
+        "product-complete-smoke"
+      ]
+    },
+    {
+      "action_id": "field.paid_call_disabled",
+      "surface": "Field Worker",
+      "route": "/field/cases/RQ-1042",
+      "action_type": "paid_external_disabled",
+      "selector": "[data-action-id=\"field.paid_call_disabled\"]",
+      "expected_visible_result": "paid call/support action is visibly disabled with explanation and non-paid local update alternative remains available",
+      "result_selector": "[data-result-id=\"field.paid-call\"]",
+      "provider_status": "paid_disabled",
+      "test_coverage": [
+        "field-app-click-smoke",
+        "product-complete-smoke"
+      ]
+    },
+    {
+      "action_id": "local.view_scenario_profile",
+      "surface": "Local Coordinator",
+      "route": "/local-coordinator?source=latest",
+      "action_type": "open_panel",
+      "selector": "[data-action-id=\"local.view_scenario_profile\"]",
+      "expected_visible_result": "scenario profile panel shows selected named profile and editable local context",
+      "result_selector": "[data-result-id=\"local.scenario\"]",
+      "provider_status": "panel",
+      "test_coverage": [
+        "local-coordinator-click-smoke",
+        "product-complete-smoke"
+      ]
+    },
+    {
+      "action_id": "local.update_scenario_profile",
+      "surface": "Local Coordinator",
+      "route": "/local-coordinator?source=latest",
+      "action_type": "mutate_local_state",
+      "selector": "[data-action-id=\"local.update_scenario_profile\"]",
+      "expected_visible_result": "scenario profile update/save visibly changes profile summary and audit/local decision state",
+      "result_selector": "[data-result-id=\"local.scenario\"]",
+      "provider_status": "local_state",
+      "test_coverage": [
+        "local-coordinator-click-smoke",
+        "product-complete-smoke"
+      ]
+    },
+    {
+      "action_id": "local.update_operation_zone",
+      "surface": "Local Coordinator",
+      "route": "/local-coordinator?source=latest",
+      "action_type": "mutate_local_state",
+      "selector": "[data-action-id=\"local.update_operation_zone\"]",
+      "expected_visible_result": "operation zone update visibly changes local zone summary and affected cases context",
+      "result_selector": "[data-result-id=\"local.scenario\"]",
+      "provider_status": "local_state",
+      "test_coverage": [
+        "local-coordinator-click-smoke",
+        "product-complete-smoke"
+      ]
+    },
+    {
+      "action_id": "local.update_relief_hub",
+      "surface": "Local Coordinator",
+      "route": "/local-coordinator?source=latest",
+      "action_type": "mutate_local_state",
+      "selector": "[data-action-id=\"local.update_relief_hub\"]",
+      "expected_visible_result": "relief hub location update visibly changes hub summary and reachable radius context",
+      "result_selector": "[data-result-id=\"local.scenario\"]",
+      "provider_status": "local_state",
+      "test_coverage": [
+        "local-coordinator-click-smoke",
+        "product-complete-smoke"
+      ]
+    },
+    {
+      "action_id": "local.update_reachable_radius",
+      "surface": "Local Coordinator",
+      "route": "/local-coordinator?source=latest",
+      "action_type": "mutate_local_state",
+      "selector": "[data-action-id=\"local.update_reachable_radius\"]",
+      "expected_visible_result": "reachable radius update visibly changes radius summary and case reachability indicators",
+      "result_selector": "[data-result-id=\"local.scenario\"]",
+      "provider_status": "local_state",
+      "test_coverage": [
+        "local-coordinator-click-smoke",
+        "product-complete-smoke"
+      ]
+    },
+    {
+      "action_id": "local.update_priority_needs",
+      "surface": "Local Coordinator",
+      "route": "/local-coordinator?source=latest",
+      "action_type": "mutate_local_state",
+      "selector": "[data-action-id=\"local.update_priority_needs\"]",
+      "expected_visible_result": "priority need types update visibly changes need filters/summary and local decision queue context",
+      "result_selector": "[data-result-id=\"local.scenario\"]",
+      "provider_status": "local_state",
+      "test_coverage": [
+        "local-coordinator-click-smoke",
+        "product-complete-smoke"
+      ]
+    },
+    {
+      "action_id": "local.update_blocked_safe_areas",
+      "surface": "Local Coordinator",
+      "route": "/local-coordinator?source=latest",
+      "action_type": "mutate_local_state",
+      "selector": "[data-action-id=\"local.update_blocked_safe_areas\"]",
+      "expected_visible_result": "blocked/safe areas update visibly changes area summary and affected route/case warnings",
+      "result_selector": "[data-result-id=\"local.scenario\"]",
+      "provider_status": "local_state",
+      "test_coverage": [
+        "local-coordinator-click-smoke",
+        "product-complete-smoke"
+      ]
+    },
+    {
+      "action_id": "local.view_case_locations",
+      "surface": "Local Coordinator",
+      "route": "/local-coordinator?source=latest",
+      "action_type": "open_panel",
+      "selector": "[data-action-id=\"local.view_case_locations\"]",
+      "expected_visible_result": "offline map panel/list opens with affected zone, hub, local case/resource locations, reachable radius, blocked areas, and safe areas",
+      "result_selector": "[data-result-id=\"local.offline-map\"]",
+      "provider_status": "panel",
+      "test_coverage": [
+        "local-coordinator-click-smoke",
+        "product-complete-smoke"
+      ]
+    },
+    {
+      "action_id": "local.view_worker_roster_status",
+      "surface": "Local Coordinator",
+      "route": "/local-coordinator?source=latest",
+      "action_type": "open_panel",
+      "selector": "[data-action-id=\"local.view_worker_roster_status\"]",
+      "expected_visible_result": "worker roster/status panel opens with local workers, availability, last sync, and assigned zones",
+      "result_selector": "[data-result-id=\"local.workers\"]",
+      "provider_status": "panel",
+      "test_coverage": [
+        "local-coordinator-click-smoke",
+        "product-complete-smoke"
+      ]
+    },
+    {
+      "action_id": "local.open_local_decision_case",
+      "surface": "Local Coordinator",
+      "route": "/local-coordinator?source=latest",
+      "action_type": "open_drawer_or_page",
+      "selector": "[data-action-id=\"local.open_local_decision_case\"]",
+      "expected_visible_result": "case needing local decision opens with reason, options, and local decision/audit outcome",
+      "result_selector": "[data-result-id=\"local.decision\"]",
+      "provider_status": "panel",
+      "test_coverage": [
+        "local-coordinator-click-smoke",
+        "product-complete-smoke"
+      ]
+    },
+    {
+      "action_id": "internal.classic_dashboard_debug_notice",
+      "surface": "Classic/debug only",
+      "route": "/internal/classic-dashboard?source=latest",
+      "action_type": "informational_notice",
+      "selector": "[data-action-id=\"internal.classic_dashboard_debug_notice\"]",
+      "expected_visible_result": "classic dashboard is labelled internal/debug only and not linked as a primary user product surface",
+      "result_selector": "[data-result-id=\"internal.debug-notice\"]",
+      "provider_status": "informational",
+      "test_coverage": [
+        "product-complete-smoke"
+      ]
+    }
+  ]
+}

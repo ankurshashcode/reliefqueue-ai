@@ -1,0 +1,12 @@
+{
+  "name": "ReliefQueue",
+  "short_name": "ReliefQueue",
+  "description": "ReliefQueue command-center and field mobile web portal.",
+  "start_url": "/field/my-cases?worker_id=worker-alpha-boat",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#000666",
+  "orientation": "portrait-primary",
+  "categories": ["productivity", "utilities"]
+}

@@ -1,0 +1,46 @@
+{
+  "name": "reliefqueue-dashboard",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node scripts/devServer.mjs",
+    "build": "vite build",
+    "preview": "vite preview",
+    "smoke": "node scripts/smoke.mjs",
+    "field-smoke": "node scripts/fieldSmoke.mjs",
+    "product-smoke": "node scripts/productSmoke.mjs",
+    "command-center-click-smoke": "node scripts/productClickSmoke.mjs command",
+    "field-app-click-smoke": "node scripts/productClickSmoke.mjs field",
+    "local-coordinator-click-smoke": "node scripts/productClickSmoke.mjs local",
+    "product-complete-smoke": "node scripts/productClickSmoke.mjs product-complete",
+    "website:readiness": "node scripts/websiteReadinessCheck.mjs",
+    "test:website-readiness": "node scripts/websiteReadinessCheck.mjs",
+    "product:click-smoke": "node scripts/productClickSmoke.mjs product-complete",
+    "test:product-click-smoke": "node scripts/productClickSmoke.mjs product-complete",
+    "website-readiness-check": "node scripts/websiteReadinessCheck.mjs",
+    "visual-port-smoke": "node scripts/visualPortSmoke.mjs",
+    "messaging-channel-smoke": "node scripts/messagingChannelSmoke.mjs",
+    "prepare-public-data": "node scripts/preparePublicData.mjs"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "^5.0.4",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "typescript": "^5.7.2",
+    "vite": "^6.2.3",
+    "@tailwindcss/vite": "^4.1.14",
+    "lucide-react": "^0.546.0",
+    "react-router-dom": "^7.18.1",
+    "clsx": "^2.1.1",
+    "tailwind-merge": "^3.6.0",
+    "tailwindcss": "^4.1.14"
+  },
+  "devDependencies": {
+    "playwright": "^1.61.1",
+    "typescript": "~5.8.2",
+    "tsx": "^4.21.0",
+    "tailwindcss": "^4.1.14",
+    "autoprefixer": "^10.4.21"
+  }
+}

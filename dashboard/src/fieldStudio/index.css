@@ -1,0 +1,45 @@
+@import url('https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --color-on-surface-variant: #454652;
+  --color-background: #f3faff;
+  --color-on-primary-container: #8690ee;
+  --color-on-primary: #ffffff;
+  --color-surface: #f3faff;
+  --color-primary-container: #1a237e;
+  --color-error: #ba1a1a;
+  --color-error-container: #ffdad6;
+  --color-on-error-container: #93000a;
+  --color-surface-container-high: #d5ecf8;
+  --color-surface-container-low: #e6f6ff;
+  --color-surface-variant: #cfe6f2;
+  --color-surface-container: #dbf1fe;
+  --color-primary: #000666;
+  --color-on-error: #ffffff;
+  --color-on-secondary: #ffffff;
+  --color-secondary: #a83900;
+  --color-secondary-container: #fc6018;
+  --color-on-secondary-container: #531800;
+  --color-outline: #767683;
+  --color-outline-variant: #c6c5d4;
+  --color-on-background: #071e27;
+  --color-on-surface: #071e27;
+  --color-tertiary: #002103;
+  --color-on-tertiary: #ffffff;
+  --color-tertiary-container: #003909;
+  --color-on-tertiary-container: #5aa958;
+  --color-tertiary-fixed-dim: #88d982;
+  --color-secondary-fixed: #ffdbcf;
+  --color-primary-fixed: #e0e0ff;
+
+  --font-sans: "Atkinson Hyperlegible Next", ui-sans-serif, system-ui, sans-serif;
+  --font-headline-md: "Atkinson Hyperlegible Next", sans-serif;
+  --font-label-md: "Atkinson Hyperlegible Next", sans-serif;
+  --font-body-lg: "Atkinson Hyperlegible Next", sans-serif;
+  --font-headline-sm: "Atkinson Hyperlegible Next", sans-serif;
+  --font-label-lg: "Atkinson Hyperlegible Next", sans-serif;
+  --font-headline-lg: "Atkinson Hyperlegible Next", sans-serif;
+  --font-headline-lg-mobile: "Atkinson Hyperlegible Next", sans-serif;
+  --font-body-md: "Atkinson Hyperlegible Next", sans-serif;
+}
