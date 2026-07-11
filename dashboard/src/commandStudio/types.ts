@@ -13,6 +13,49 @@ export type ViewState =
   | 'amd'
   | 'capabilities';
 
+
+export const VIEW_ROUTES: Record<ViewState, string> = {
+  overview: '/dashboard?source=latest',
+  intake: '/dashboard/intake',
+  links: '/dashboard/incident-links',
+  map: '/dashboard/map',
+  assignments: '/dashboard/assignments',
+  workload: '/dashboard/workload',
+  sync: '/dashboard/field-sync',
+  scenario: '/dashboard/scenario',
+  aicontrol: '/dashboard/ai-control',
+  quality: '/dashboard/quality',
+  audit: '/dashboard/audit',
+  amd: '/dashboard/amd-impact',
+  capabilities: '/dashboard/capability-map',
+};
+
+export function viewForPath(rawPath: string): ViewState {
+  const path = (rawPath || '/').replace(/\/+$/, '') || '/';
+  const aliases: Record<string, ViewState> = {
+    '/': 'overview',
+    '/dashboard': 'overview',
+    '/dashboard/overview': 'overview',
+    '/dashboard/map': 'map',
+    '/dashboard/assignments': 'assignments',
+    '/dashboard/workload': 'workload',
+    '/dashboard/field-sync': 'sync',
+    '/dashboard/scenario': 'scenario',
+    '/dashboard/ai-control': 'aicontrol',
+    '/dashboard/ai-control/test': 'aicontrol',
+    '/dashboard/ai-control/confirm-change': 'aicontrol',
+    '/dashboard/quality': 'quality',
+    '/dashboard/audit': 'audit',
+    '/dashboard/troubleshooting': 'audit',
+    '/dashboard/intake': 'intake',
+    '/dashboard/incident-links': 'links',
+    '/dashboard/amd-impact': 'amd',
+    '/dashboard/capability-map': 'capabilities',
+    '/internal/classic-dashboard': 'overview',
+  };
+  return aliases[path] || 'overview';
+}
+
 export interface NavItem {
   id: ViewState;
   label: string;

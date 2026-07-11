@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { MapPin, Radio, Route, ShieldCheck, Users } from 'lucide-react';
+import { ProductRoleSwitcher } from '../components/ProductRoleSwitcher';
 
 type Scenario = {
   profile: string;
@@ -88,7 +89,7 @@ export default function LocalCoordinatorApp() {
             <h1 className="mt-2 text-3xl font-bold">Local Coordinator</h1>
             <p className="mt-2 max-w-3xl text-slate-300">Own field context—scenario, zone, relief hub, radius, priority needs, safe/blocked areas, case locations, and worker status—while Command Center retains runtime controls.</p>
           </div>
-          <a href="/dashboard?source=latest" className="rounded-lg border border-slate-600 px-4 py-2 text-sm font-semibold hover:bg-slate-800">Open Command Center</a>
+          <ProductRoleSwitcher currentRole="local" dark />
         </header>
 
         <section className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-6">

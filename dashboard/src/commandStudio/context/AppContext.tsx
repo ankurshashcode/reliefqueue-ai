@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
-import { LogEntry, ToastMsg, ViewState } from '../types';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { LogEntry, ToastMsg, ViewState, VIEW_ROUTES, viewForPath } from '../types';
 
 interface AppContextType {
   currentView: ViewState;
@@ -23,6 +23,17 @@ export function AppProvider({ children, initialView = 'overview' }: { children: 
 
   const navigate = useCallback((view: ViewState) => {
     setCurrentView(view);
+    if (typeof window !== 'undefined') {
+      const next = VIEW_ROUTES[view];
+      const current = `${window.location.pathname}${window.location.search}`;
+      if (current !== next) window.history.pushState({ reliefQueueView: view }, '', next);
+    }
+  }, []);
+
+  useEffect(() => {
+    const syncFromHistory = () => setCurrentView(viewForPath(window.location.pathname));
+    window.addEventListener('popstate', syncFromHistory);
+    return () => window.removeEventListener('popstate', syncFromHistory);
   }, []);
 
   const addLog = useCallback((action: string, categoryOrDetails?: string, status?: string, detailsObj?: any) => {

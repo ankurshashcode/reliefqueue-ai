@@ -27,6 +27,7 @@ _PROVIDER_KEY_RE = re.compile(r"\b(?:sk|fw|fireworks)-[A-Za-z0-9_\-]{16,}\b")
 
 _SKIP_PARTS = {
     ".git",
+    ".local",
     ".mypy_cache",
     ".pytest_cache",
     "reports/latest/field",
