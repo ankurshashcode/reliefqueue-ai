@@ -20,6 +20,7 @@ dashboard/public/fixtures/
 reports/latest/
 reports/batch-*/
 reports-for-review/
+.cache/
 
 # Local AI/Ollama context packets
 var/ai-context/

@@ -29,6 +29,44 @@ interface LiveResult {
   generated_advisory: string | null;
   warnings: string[];
   error: string | null;
+  workload_mode?: string;
+  structured_output?: any;
+  normalized_structured_record?: any;
+  source_evidence_mapping?: any[];
+  operational_analysis?: any;
+  compact_json?: any;
+  request_settings?: any;
+  context_budget?: any;
+  model_metadata?: any;
+  analysis_source?: 'provider' | 'local_safe_fallback' | 'none' | string;
+  provider_transport_verified_live?: boolean;
+  provider_response_received?: boolean;
+  nonce_sent_to_provider?: boolean;
+  nonce_echoed_by_provider?: boolean;
+  verification_bound_to_nonce?: boolean;
+  verification_failure_reason?: string;
+  provider_call_count?: number;
+  provider_request_ids?: string[];
+  provider_prompt_tokens?: number;
+  provider_completion_tokens?: number;
+  provider_total_tokens?: number;
+  provider_latency_ms?: number;
+  semantic_completeness?: boolean;
+  semantic_issues?: string[];
+  repair_attempted?: boolean;
+  repair_succeeded?: boolean;
+  repair_reason?: string[];
+  repair_evidence?: any;
+  deterministic_prompt_support?: {
+    source_report_count?: number;
+    calculation_candidate_count?: number;
+    conflict_update_signal_count?: number;
+    support_type?: string;
+    final_analysis_source?: string;
+  } | null;
+  synthetic_text_sent?: boolean;
+  private_text_sent?: boolean;
+  secret_values_exposed?: boolean;
 }
 
 interface BurstCaseResult extends LiveResult {
@@ -37,13 +75,18 @@ interface BurstCaseResult extends LiveResult {
 
 interface BurstResult {
   status: string;
+  verified_live?: boolean;
+  fallback_used?: boolean;
   batch_id: string;
   started_at: string;
   completed_at: string;
   submitted: number;
+  parsed?: number;
   succeeded: number;
   failed: number;
   live_amd_responses: number;
+  live_provider_calls_succeeded?: number;
+  provider_call_count?: number;
   fallback_responses: number;
   total_elapsed_ms: number;
   median_latency_ms: number | null;
@@ -51,6 +94,12 @@ interface BurstResult {
   prompt_tokens: number;
   completion_tokens: number;
   total_tokens: number;
+  synthesis_prompt_tokens?: number;
+  synthesis_completion_tokens?: number;
+  synthesis_total_tokens?: number;
+  provider_prompt_tokens?: number;
+  provider_completion_tokens?: number;
+  provider_total_tokens?: number;
   approximate_throughput_rps: number;
   active_model: string;
   served_model: string;
@@ -58,6 +107,11 @@ interface BurstResult {
   accelerator: string;
   human_review_required: boolean;
   cases: BurstCaseResult[];
+  parsed_preview?: { id: string; text: string }[];
+  cross_case_synthesis?: any;
+  cross_case_evidence?: LiveResult;
+  request_settings?: any;
+  model_metadata?: any;
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -139,7 +193,10 @@ const BURST_EXAMPLE_CASES = [
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function isVerified(r: LiveResult | null) {
-  return r?.verified_live === true && r?.fallback_used === false;
+  return r?.verified_live === true
+    && r?.fallback_used === false
+    && r?.analysis_source === 'provider'
+    && r?.verification_bound_to_nonce === true;
 }
 
 function parseTokenEstimate(text: string): number {
@@ -168,9 +225,21 @@ export function AmdImpact() {
   const [parsedCases, setParsedCases] = useState<{ id: string; text: string }[] | null>(null);
   const [parseError, setParseError] = useState<string | null>(null);
   const [burstConcurrency, setBurstConcurrency] = useState(4);
+  const [burstConsent, setBurstConsent] = useState(false);
   const [burstLoading, setBurstLoading] = useState(false);
   const [burstResult, setBurstResult] = useState<BurstResult | null>(null);
   const [expandedCases, setExpandedCases] = useState<Set<string>>(new Set());
+
+  const latestMetadata = burstResult?.model_metadata || dossierResult?.model_metadata || singleResult?.model_metadata || null;
+  const displayedProvider = latestMetadata?.provider || 'AMD Developer Cloud';
+  const displayedAccelerator = latestMetadata?.accelerator || 'AMD Instinct MI300X';
+  const displayedRuntime = latestMetadata?.runtime || 'Reported after live verification';
+  const displayedModel = latestMetadata?.underlying_model || latestMetadata?.served_model || 'Reported after live verification';
+  const displayedModelSub = latestMetadata?.underlying_model
+    ? `Served as: ${latestMetadata?.served_model || 'not reported'}`
+    : latestMetadata?.served_model
+      ? 'Underlying model not reported by endpoint'
+      : 'No hard-coded model claim';
 
   // ── Single Incident ──────────────────────────────────────────────────────
 
@@ -182,15 +251,15 @@ export function AmdImpact() {
       const res = await fetch('/api/ai/live-verification', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: singleInput }),
+        body: JSON.stringify({ text: singleInput, workload_mode: 'single', synthetic_confirmed: true }),
       });
       const data: LiveResult = await res.json();
       setSingleResult(data);
     } catch (err: any) {
       setSingleResult({
         status: 'failed', verified_live: false, provider: 'AMD Developer Cloud',
-        runtime: 'vLLM 0.23.0', accelerator: 'AMD Instinct MI300X',
-        served_model: null, underlying_model: 'Qwen/Qwen2.5-7B-Instruct',
+        runtime: null, accelerator: 'AMD Instinct MI300X',
+        served_model: null, underlying_model: null,
         request_id: null, verified_at: null, latency_ms: null,
         prompt_tokens: null, completion_tokens: null, total_tokens: null,
         fallback_used: true, human_review_required: true,
@@ -213,15 +282,15 @@ export function AmdImpact() {
       const res = await fetch('/api/ai/live-verification', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: dossierInput }),
+        body: JSON.stringify({ text: dossierInput, workload_mode: 'complex_dossier', synthetic_confirmed: true }),
       });
       const data: LiveResult = await res.json();
       setDossierResult(data);
     } catch (err: any) {
       setDossierResult({
         status: 'failed', verified_live: false, provider: 'AMD Developer Cloud',
-        runtime: 'vLLM 0.23.0', accelerator: 'AMD Instinct MI300X',
-        served_model: null, underlying_model: 'Qwen/Qwen2.5-7B-Instruct',
+        runtime: null, accelerator: 'AMD Instinct MI300X',
+        served_model: null, underlying_model: null,
         request_id: null, verified_at: null, latency_ms: null,
         prompt_tokens: null, completion_tokens: null, total_tokens: null,
         fallback_used: true, human_review_required: true,
@@ -236,65 +305,25 @@ export function AmdImpact() {
 
   // ── Burst Workload ────────────────────────────────────────────────────────
 
-  const parseBurstInput = (raw: string): { cases: { id: string; text: string }[] | null; error: string | null } => {
-    const trimmed = raw.trim();
-    if (!trimmed) return { cases: null, error: 'Input is empty.' };
-
-    // Try JSON array
-    if (trimmed.startsWith('[')) {
-      try {
-        const arr = JSON.parse(trimmed);
-        if (!Array.isArray(arr)) return { cases: null, error: 'Expected a JSON array.' };
-        const cases = arr.map((item, i) => {
-          if (typeof item === 'string') return { id: `case-${i + 1}`, text: item };
-          if (typeof item === 'object' && item !== null && 'text' in item) {
-            return { id: String(item.id || `case-${i + 1}`), text: String(item.text || '') };
-          }
-          return { id: `case-${i + 1}`, text: JSON.stringify(item) };
-        });
-        return { cases, error: null };
-      } catch {
-        return { cases: null, error: 'Invalid JSON array.' };
-      }
-    }
-
-    // Try JSONL
-    const lines = trimmed.split('\n').filter(l => l.trim());
-    if (lines[0].trim().startsWith('{')) {
-      try {
-        const cases = lines.map((line, i) => {
-          const obj = JSON.parse(line);
-          return { id: String(obj.id || `case-${i + 1}`), text: String(obj.text || '') };
-        });
-        return { cases, error: null };
-      } catch {
-        return { cases: null, error: 'Invalid JSONL — each line must be valid JSON with at least an "id" and "text" field.' };
-      }
-    }
-
-    // One report per line
-    const cases = lines.map((line, i) => ({ id: `case-${i + 1}`, text: line.trim() })).filter(c => c.text);
-    return { cases, error: null };
-  };
-
-  const handleParseBurst = () => {
-    const { cases, error } = parseBurstInput(burstInput);
-    if (error) {
+  const handleParseBurst = async () => {
+    try {
+      const res = await fetch('/api/ai/burst-parse', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: burstInput }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || data?.message || 'Unable to parse burst workload.');
+      setParsedCases(data.cases);
+      setParseError(null);
+    } catch (err: any) {
       setParsedCases(null);
-      setParseError(error);
-      return;
+      setParseError(err?.message || 'Unable to parse burst workload.');
     }
-    if (cases && cases.length > 24) {
-      setParsedCases(null);
-      setParseError(`Too many cases: ${cases.length} exceeds maximum of 24.`);
-      return;
-    }
-    setParsedCases(cases);
-    setParseError(null);
   };
 
   const runBurst = async () => {
-    if (!parsedCases || parsedCases.length === 0) return;
+    if (!burstConsent || !parsedCases || parsedCases.length === 0) return;
     setBurstLoading(true);
     setBurstResult(null);
     setExpandedCases(new Set());
@@ -302,7 +331,7 @@ export function AmdImpact() {
       const res = await fetch('/api/ai/burst-verification', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reports: parsedCases, concurrency: burstConcurrency }),
+        body: JSON.stringify({ reports: parsedCases, concurrency: burstConcurrency, synthetic_confirmed: true }),
       });
       const data: BurstResult = await res.json();
       if ((data as any).error) throw new Error((data as any).error);
@@ -337,10 +366,10 @@ export function AmdImpact() {
 
       {/* Infrastructure Info Cards — always factual, never "Pending" */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-8">
-        <InfraCard icon={<Server className="w-4 h-4" />} label="Inference Mode" value="Live AMD/vLLM" sub="Deterministic fallback available" />
-        <InfraCard icon={<Cpu className="w-4 h-4 text-rq-primary" />} label="AMD Accelerator" value="AMD Instinct MI300X" sub="Provider: AMD Developer Cloud" highlight />
-        <InfraCard icon={<Activity className="w-4 h-4" />} label="Runtime" value="vLLM 0.23.0" sub="OpenAI-compatible backend" />
-        <InfraCard icon={<Layers className="w-4 h-4" />} label="Active Model" value="Qwen/Qwen2.5-7B-Instruct" sub="Served as: reliefqueue-amd" />
+        <InfraCard icon={<Server className="w-4 h-4" />} label="Inference Mode" value="Live AMD/vLLM" sub="Fallback is visibly labelled and never counted as verified" />
+        <InfraCard icon={<Cpu className="w-4 h-4 text-rq-primary" />} label="AMD Accelerator" value={displayedAccelerator} sub={`Provider: ${displayedProvider}`} highlight />
+        <InfraCard icon={<Activity className="w-4 h-4" />} label="Runtime" value={displayedRuntime} sub="Backend deployment metadata; served model from provider response" />
+        <InfraCard icon={<Layers className="w-4 h-4" />} label="Active Model" value={displayedModel} sub={displayedModelSub} />
         <InfraCard icon={<ShieldAlert className="w-4 h-4 text-emerald-600" />} label="Data Safety" value="Synthetic input only" sub="Private text: false · Secrets: false" />
         <InfraCard icon={<CheckCircle className="w-4 h-4 text-amber-600" />} label="Human Review" value="Required" sub="No autonomous dispatch" amber />
       </div>
@@ -373,6 +402,7 @@ export function AmdImpact() {
             <textarea
               value={singleInput}
               onChange={e => setSingleInput(e.target.value)}
+              data-testid="amd-single-input"
               rows={5}
               className="w-full rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm font-mono text-slate-800 focus:outline-none focus:ring-2 focus:ring-rq-primary resize-y"
               placeholder="Enter your synthetic incident report here…"
@@ -383,6 +413,7 @@ export function AmdImpact() {
                   type="checkbox"
                   checked={singleConsent}
                   onChange={e => setSingleConsent(e.target.checked)}
+                  data-testid="amd-single-consent"
                   className="mt-0.5 w-4 h-4 rounded accent-rq-primary"
                 />
                 <span className="text-xs text-slate-600">
@@ -394,6 +425,7 @@ export function AmdImpact() {
               onClick={runSingle}
               disabled={singleLoading || !singleConsent || !singleInput.trim()}
               data-action-id="amd.run_single_incident"
+              data-testid="amd-single-run"
               className="mt-4 flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold px-6 py-3 rounded-xl text-sm transition-colors shadow"
             >
               {singleLoading
@@ -402,7 +434,7 @@ export function AmdImpact() {
             </button>
           </div>
 
-          {singleResult && <LiveResultPanel result={singleResult} label="Single Incident" />}
+          {singleResult && <div data-testid="amd-single-structured-result"><LiveResultPanel result={singleResult} label="Single Incident" showOriginalInput /></div>}
         </div>
       )}
 
@@ -434,6 +466,7 @@ export function AmdImpact() {
             <textarea
               value={dossierInput}
               onChange={e => setDossierInput(e.target.value)}
+              data-testid="amd-complex-input"
               rows={14}
               className="w-full rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm font-mono text-slate-800 focus:outline-none focus:ring-2 focus:ring-purple-400 resize-y"
               placeholder="Paste your complex dossier here, or click Load Example above…"
@@ -446,7 +479,7 @@ export function AmdImpact() {
                 <span>Safe max: <strong className="text-slate-700">~6,000 tokens</strong></span>
                 {parseTokenEstimate(dossierInput) > 6000 && (
                   <span className="text-amber-600 font-semibold flex items-center gap-1">
-                    <AlertTriangle className="w-3 h-3" /> Dossier will be truncated to 4,000 characters before submission.
+                    <AlertTriangle className="w-3 h-3" /> Dossier exceeds the reviewed context estimate and will be rejected rather than silently truncated.
                   </span>
                 )}
               </div>
@@ -467,6 +500,7 @@ export function AmdImpact() {
               onClick={runDossier}
               disabled={dossierLoading || !dossierConsent || !dossierInput.trim()}
               data-action-id="amd.run_complex_dossier"
+              data-testid="amd-complex-run"
               className="mt-4 flex items-center gap-2 bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white font-bold px-6 py-3 rounded-xl text-sm transition-colors shadow"
             >
               {dossierLoading
@@ -475,7 +509,7 @@ export function AmdImpact() {
             </button>
           </div>
 
-          {dossierResult && <LiveResultPanel result={dossierResult} label="Complex Dossier" showOriginalInput />}
+          {dossierResult && <div data-testid="amd-complex-structured-result"><LiveResultPanel result={dossierResult} label="Complex Dossier" showOriginalInput /></div>}
         </div>
       )}
 
@@ -488,7 +522,7 @@ export function AmdImpact() {
             </h3>
             <p className="text-sm text-slate-500 mb-4">
               Submit up to 24 synthetic incident reports at once. Each case gets a unique challenge nonce and fresh AMD request.
-              Supported formats: one report per line · JSON array of strings · JSONL (<code className="bg-slate-100 px-1 rounded text-[11px]">{"{ \"id\": \"case-1\", \"text\": \"...\" }"}</code>).
+              Supported formats: blank-line-separated reports · JSON array of strings · JSONL (<code className="bg-slate-100 px-1 rounded text-[11px]">{"{ \"id\": \"case-1\", \"text\": \"...\" }"}</code>).
             </p>
             <div className="flex gap-3 mb-3 flex-wrap">
               <button
@@ -505,12 +539,13 @@ export function AmdImpact() {
               <button
                 onClick={handleParseBurst}
                 disabled={!burstInput.trim()}
+                data-testid="amd-parse-burst"
                 className="px-3 py-1.5 bg-blue-100 hover:bg-blue-200 text-blue-800 text-xs font-semibold rounded-lg transition-colors disabled:opacity-50"
               >
                 Parse Workload
               </button>
               <button
-                onClick={() => { setBurstInput(''); setParsedCases(null); setParseError(null); setBurstResult(null); }}
+                onClick={() => { setBurstInput(''); setParsedCases(null); setParseError(null); setBurstResult(null); setBurstConsent(false); }}
                 className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-500 text-xs font-semibold rounded-lg transition-colors"
               >
                 Clear
@@ -519,9 +554,10 @@ export function AmdImpact() {
             <textarea
               value={burstInput}
               onChange={e => { setBurstInput(e.target.value); setParsedCases(null); setParseError(null); }}
+              data-testid="amd-burst-input"
               rows={10}
               className="w-full rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs font-mono text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-400 resize-y"
-              placeholder="Paste reports here (one per line, JSON array, or JSONL) then click Parse Workload…"
+              placeholder="Paste reports here (separate multiline reports with a blank line, or use JSON/JSONL), then click Parse Workload…"
             />
 
             {parseError && (
@@ -530,9 +566,14 @@ export function AmdImpact() {
               </div>
             )}
             {parsedCases && (
-              <div className="mt-2 p-2 bg-emerald-50 border border-emerald-200 rounded text-xs text-emerald-800 flex items-center gap-1.5">
+              <div data-testid="amd-parsed-count" className="mt-2 p-2 bg-emerald-50 border border-emerald-200 rounded text-xs text-emerald-800">
+                <div className="flex items-center gap-1.5">
                 <CheckCircle className="w-3.5 h-3.5 shrink-0" />
                 Parsed <strong>{parsedCases.length}</strong> case{parsedCases.length !== 1 ? 's' : ''} — ready to run (max 24).
+                </div>
+                <div data-testid="amd-parsed-preview" className="mt-2 grid gap-1 text-[11px] text-emerald-900">
+                  {parsedCases.slice(0, 6).map(c => <div key={c.id}><strong>{c.id}</strong>: {c.text.slice(0, 110)}</div>)}
+                </div>
               </div>
             )}
 
@@ -549,10 +590,23 @@ export function AmdImpact() {
                   ))}
                 </select>
               </div>
+              <label className="flex items-start gap-2 cursor-pointer select-none max-w-md">
+                <input
+                  type="checkbox"
+                  checked={burstConsent}
+                  onChange={e => setBurstConsent(e.target.checked)}
+                  data-testid="amd-burst-consent"
+                  className="mt-0.5 w-4 h-4 rounded accent-blue-600"
+                />
+                <span className="text-xs text-slate-600">
+                  I confirm every parsed case is synthetic demonstration data and contains no real personal information.
+                </span>
+              </label>
               <button
                 onClick={runBurst}
-                disabled={burstLoading || !parsedCases || parsedCases.length === 0}
+                disabled={burstLoading || !burstConsent || !parsedCases || parsedCases.length === 0}
                 data-action-id="amd.run_burst"
+                data-testid="amd-run-burst"
                 className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-bold px-6 py-3 rounded-xl text-sm transition-colors shadow"
               >
                 {burstLoading
@@ -564,14 +618,15 @@ export function AmdImpact() {
 
           {/* Burst Results */}
           {burstResult && (
-            <div className="space-y-4">
+            <div className="space-y-4" data-testid="amd-burst-result">
               {/* Aggregate stats */}
               <div className="bg-slate-900 text-white rounded-2xl p-6">
                 <div className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-1">Burst Verification Result</div>
                 <div className="flex items-center gap-3 mb-4">
-                  <div className={`text-2xl font-black ${burstResult.succeeded > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                    {burstResult.succeeded}/{burstResult.submitted} AMD Live Responses
+                  <div className={`text-2xl font-black ${burstResult.verified_live ? 'text-emerald-400' : 'text-amber-400'}`}>
+                    {burstResult.verified_live ? '✓ VERIFIED LIVE BATCH + SYNTHESIS' : 'PARTIAL / UNVERIFIED BATCH'}
                   </div>
+                  <span className="text-xs text-slate-300">{burstResult.succeeded}/{burstResult.submitted} nonce-bound case analyses</span>
                   {burstResult.fallback_responses > 0 && (
                     <span className="bg-amber-700 text-amber-100 text-xs font-bold px-2 py-0.5 rounded">
                       {burstResult.fallback_responses} fallback
@@ -585,16 +640,39 @@ export function AmdImpact() {
                   <BurstStat label="Total Elapsed" value={`${burstResult.total_elapsed_ms} ms`} />
                   <BurstStat label="Median Latency" value={burstResult.median_latency_ms != null ? `${burstResult.median_latency_ms} ms` : '—'} />
                   <BurstStat label="P95 Latency" value={burstResult.p95_latency_ms != null ? `${burstResult.p95_latency_ms} ms` : '—'} />
-                  <BurstStat label="Prompt Tokens" value={String(burstResult.prompt_tokens)} />
-                  <BurstStat label="Completion Tokens" value={String(burstResult.completion_tokens)} />
-                  <BurstStat label="Total Tokens" value={String(burstResult.total_tokens)} />
+                  <BurstStat label="Case Prompt Tokens" value={String(burstResult.prompt_tokens)} />
+                  <BurstStat label="Case Completion Tokens" value={String(burstResult.completion_tokens)} />
+                  <BurstStat label="Case Total Tokens" value={String(burstResult.total_tokens)} />
+                  <BurstStat label="Synthesis Tokens" value={String(burstResult.synthesis_total_tokens ?? burstResult.cross_case_evidence?.total_tokens ?? '—')} />
+                  <BurstStat label="All Provider Tokens" value={String(burstResult.provider_total_tokens ?? '—')} />
                   <BurstStat label="Throughput" value={`${burstResult.approximate_throughput_rps} req/s`} />
                   <BurstStat label="Model" value={burstResult.active_model} />
                   <BurstStat label="Accelerator" value={burstResult.accelerator} />
-                  <BurstStat label="Succeeded" value={String(burstResult.succeeded)} green />
+                  <BurstStat label="Parsed" value={String(burstResult.parsed ?? burstResult.submitted)} />
+                  <BurstStat label="Provider Calls" value={String(burstResult.provider_call_count ?? '—')} />
+                  <BurstStat label="Succeeded" value={String(burstResult.succeeded)} green={burstResult.succeeded === burstResult.submitted} />
                   <BurstStat label="Failed" value={String(burstResult.failed)} red={burstResult.failed > 0} />
                   <BurstStat label="Human Review" value="Required" amber />
                 </div>
+                {burstResult.cross_case_synthesis && (
+                  <div data-testid="amd-burst-cross-case-synthesis" className="mt-5 bg-slate-800 border border-slate-700 rounded-xl p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                      <div className="text-slate-300 text-xs font-bold uppercase tracking-widest">Cross-Case Command-Centre Synthesis</div>
+                      <span className={`text-[10px] font-bold px-2 py-1 rounded ${isVerified(burstResult.cross_case_evidence || null) ? 'bg-emerald-700 text-emerald-50' : 'bg-amber-700 text-amber-50'}`}>
+                        {isVerified(burstResult.cross_case_evidence || null) ? 'AMD-GENERATED · NONCE-BOUND' : `${burstResult.cross_case_evidence?.analysis_source || 'unknown source'} · NOT VERIFIED`}
+                      </span>
+                    </div>
+                    {burstResult.cross_case_evidence && (
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3 text-[10px] text-slate-300">
+                        <div>Request: <span className="font-mono text-white">{burstResult.cross_case_evidence.request_id || '—'}</span></div>
+                        <div>Nonce: <span className="font-mono text-white">{burstResult.cross_case_evidence.challenge_nonce || '—'}</span></div>
+                        <div>Latency: <span className="text-white">{burstResult.cross_case_evidence.latency_ms ?? '—'} ms</span></div>
+                        <div>Fallback: <span className="text-white">{burstResult.cross_case_evidence.fallback_used ? 'Yes' : 'No'}</span></div>
+                      </div>
+                    )}
+                    <pre className="text-xs text-slate-100 whitespace-pre-wrap overflow-auto max-h-80">{JSON.stringify(burstResult.cross_case_synthesis, null, 2)}</pre>
+                  </div>
+                )}
               </div>
 
               {/* Per-case table */}
@@ -613,7 +691,7 @@ export function AmdImpact() {
                     </thead>
                     <tbody>
                       {burstResult.cases.map(c => {
-                        const live = c.verified_live && !c.fallback_used;
+                        const live = isVerified(c);
                         const isExpanded = expandedCases.has(c.case_id);
                         return [
                           <tr key={c.case_id} className="border-b border-slate-100 hover:bg-slate-50">
@@ -671,10 +749,9 @@ export function AmdImpact() {
           </span>
         </div>
         <div className="p-4 text-xs text-slate-600">
-          The Gemma 4 bonus lane is prepared for structured triage via the same vLLM/OpenAI-compatible backend. It is{' '}
-          <strong>not the active model in this deployment.</strong>{' '}
-          The currently active model is <strong>Qwen/Qwen2.5-7B-Instruct</strong> served as{' '}
-          <code className="bg-slate-100 px-1 rounded">reliefqueue-amd</code> on AMD Instinct MI300X via vLLM 0.23.0.
+          The Gemma 4 bonus lane is prepared for structured triage via the same OpenAI-compatible backend, but it is{' '}
+          <strong>not active in this deployment.</strong>{' '}
+          The active served/underlying model identity is shown above only from live provider response and backend deployment metadata.
           Human review is required regardless of which model is active.
         </div>
       </div>
@@ -703,20 +780,45 @@ function LiveResultPanel({ result, label, showOriginalInput }: {
   result: LiveResult; label: string; showOriginalInput?: boolean;
 }) {
   const ok = isVerified(result);
+  const localFallback = result.analysis_source === 'local_safe_fallback';
+  const providerIncomplete = result.analysis_source === 'provider_incomplete';
+  const providerUnbound = result.provider_response_received === true && !ok && !localFallback;
+  const bannerClass = ok
+    ? 'bg-emerald-50 border-2 border-emerald-400'
+    : localFallback || providerUnbound
+      ? 'bg-amber-50 border-2 border-amber-400'
+      : 'bg-red-50 border-2 border-red-400';
+  const iconClass = ok ? 'bg-emerald-100' : localFallback || providerUnbound ? 'bg-amber-100' : 'bg-red-100';
+  const titleClass = ok ? 'text-emerald-800' : localFallback || providerUnbound ? 'text-amber-800' : 'text-red-800';
+  const bodyClass = ok ? 'text-emerald-700' : localFallback || providerUnbound ? 'text-amber-700' : 'text-red-700';
+  const title = ok
+    ? '✓ VERIFIED LIVE AMD ANALYSIS'
+    : localFallback
+      ? 'LOCAL SAFE FALLBACK — NOT LIVE AMD ANALYSIS'
+      : providerUnbound
+        ? 'AMD RESPONSE RECEIVED — VERIFICATION INCOMPLETE'
+        : '✗ LIVE VERIFICATION FAILED';
+  const subtitle = ok
+    ? `Provider-generated, nonce-bound analysis confirmed · ${label}`
+    : localFallback
+      ? 'The provider response could not be safely used as structured analysis. Local deterministic fallback is shown and labelled.'
+      : providerUnbound
+        ? result.verification_failure_reason || (providerIncomplete ? 'AMD returned structured JSON, but required operational sections were incomplete.' : 'The provider response was not bound to the displayed challenge nonce or was otherwise incomplete.')
+        : result.error || 'AMD endpoint did not return a usable response.';
+
   return (
     <div className="space-y-4">
-      {/* Banner */}
-      <div className={`rounded-2xl p-5 flex items-start gap-4 shadow-md ${ok ? 'bg-emerald-50 border-2 border-emerald-400' : 'bg-red-50 border-2 border-red-400'}`}>
-        <div className={`shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${ok ? 'bg-emerald-100' : 'bg-red-100'}`}>
-          {ok ? <CheckCircle className="w-6 h-6 text-emerald-600" /> : <XCircle className="w-6 h-6 text-red-600" />}
+      <div className={`rounded-2xl p-5 flex items-start gap-4 shadow-md ${bannerClass}`}>
+        <div className={`shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${iconClass}`}>
+          {ok
+            ? <CheckCircle className="w-6 h-6 text-emerald-600" />
+            : localFallback || providerUnbound
+              ? <AlertTriangle className="w-6 h-6 text-amber-600" />
+              : <XCircle className="w-6 h-6 text-red-600" />}
         </div>
         <div className="flex-1">
-          <div className={`text-xl font-black tracking-tight ${ok ? 'text-emerald-800' : 'text-red-800'}`}>
-            {ok ? '✓ VERIFIED LIVE' : '✗ LIVE VERIFICATION FAILED'}
-          </div>
-          <div className={`text-sm font-medium mt-0.5 ${ok ? 'text-emerald-700' : 'text-red-700'}`}>
-            {ok ? `Real AMD inference confirmed · ${label}` : result.error || 'AMD endpoint did not return a verified live response.'}
-          </div>
+          <div className={`text-xl font-black tracking-tight ${titleClass}`}>{title}</div>
+          <div className={`text-sm font-medium mt-0.5 ${bodyClass}`}>{subtitle}</div>
           {result.warnings?.length > 0 && (
             <div className="mt-2 flex flex-wrap gap-1">
               {result.warnings.map((w, i) => (
@@ -727,23 +829,44 @@ function LiveResultPanel({ result, label, showOriginalInput }: {
         </div>
       </div>
 
-      {/* Evidence grid */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
         <ECard icon={<Server className="w-3.5 h-3.5" />} label="Provider" value={result.provider} />
         <ECard icon={<Cpu className="w-3.5 h-3.5" />} label="Accelerator" value={result.accelerator} />
         <ECard icon={<Activity className="w-3.5 h-3.5" />} label="Runtime" value={result.runtime} />
         <ECard icon={<Layers className="w-3.5 h-3.5" />} label="Served Model" value={result.served_model} />
-        <ECard icon={<Bot className="w-3.5 h-3.5" />} label="Underlying Model" value={result.underlying_model} />
+        <ECard icon={<Bot className="w-3.5 h-3.5" />} label="Underlying Model" value={result.underlying_model || 'Not reported by endpoint'} />
         <ECard icon={<Hash className="w-3.5 h-3.5" />} label="Request ID" value={result.request_id} mono />
-        {result.challenge_nonce && <ECard icon={<Hash className="w-3.5 h-3.5" />} label="Challenge Nonce" value={result.challenge_nonce} mono />}
+        <ECard icon={<Hash className="w-3.5 h-3.5" />} label="Challenge Nonce" value={result.challenge_nonce} mono />
         <ECard icon={<Clock className="w-3.5 h-3.5" />} label="Verified At (UTC)" value={result.verified_at} mono />
         <ECard icon={<Zap className="w-3.5 h-3.5" />} label="Latency" value={result.latency_ms != null ? `${result.latency_ms} ms` : null} />
-        <ECard icon={<Activity className="w-3.5 h-3.5" />} label="Tokens" value={result.prompt_tokens != null ? `${result.prompt_tokens}p / ${result.completion_tokens}c / ${result.total_tokens}t` : null} />
+        <ECard icon={<Activity className="w-3.5 h-3.5" />} label="Displayed Analysis Tokens" value={result.prompt_tokens != null ? `${result.prompt_tokens}p / ${result.completion_tokens}c / ${result.total_tokens}t` : null} />
+        <ECard icon={<Activity className="w-3.5 h-3.5" />} label="Provider Calls" value={result.provider_call_count != null ? String(result.provider_call_count) : '1'} />
+        <ECard icon={<Activity className="w-3.5 h-3.5" />} label="All Provider Tokens" value={result.provider_total_tokens != null ? String(result.provider_total_tokens) : result.total_tokens != null ? String(result.total_tokens) : null} />
+        <ECard
+          icon={<CheckCircle className="w-3.5 h-3.5" />}
+          label="Semantic Completeness"
+          value={result.semantic_completeness === false ? 'Failed' : result.semantic_completeness === true ? 'Passed' : 'Not evaluated'}
+          highlight={result.semantic_completeness === false ? 'red' : result.semantic_completeness === true ? 'green' : undefined}
+        />
+        <ECard
+          icon={<Activity className="w-3.5 h-3.5" />}
+          label="AMD Repair Pass"
+          value={result.repair_attempted ? (result.repair_succeeded ? 'Used · Passed' : 'Used · Failed') : 'Not needed'}
+          highlight={result.repair_attempted ? (result.repair_succeeded ? 'green' : 'red') : undefined}
+        />
+        <ECard
+          icon={<FileText className="w-3.5 h-3.5" />}
+          label="Deterministic Prompt Support"
+          value={result.deterministic_prompt_support
+            ? `${result.deterministic_prompt_support.source_report_count ?? '—'} sources · ${result.deterministic_prompt_support.calculation_candidate_count ?? 0} arithmetic anchors`
+            : 'Not used'}
+        />
+        <ECard icon={<FileText className="w-3.5 h-3.5" />} label="Analysis Source" value={result.analysis_source || 'not reported'} highlight={result.analysis_source === 'provider' ? 'green' : result.analysis_source === 'local_safe_fallback' ? 'amber' : 'red'} />
+        <ECard icon={<CheckCircle className="w-3.5 h-3.5" />} label="Nonce Bound" value={result.verification_bound_to_nonce ? 'Yes' : 'No'} highlight={result.verification_bound_to_nonce ? 'green' : 'red'} />
         <ECard icon={<CheckCircle className="w-3.5 h-3.5" />} label="Fallback Used" value={result.fallback_used ? 'Yes' : 'No'} highlight={result.fallback_used ? 'red' : 'green'} />
         <ECard icon={<ShieldAlert className="w-3.5 h-3.5" />} label="Human Review" value="Required" highlight="amber" />
       </div>
 
-      {/* Input + Advisory */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {showOriginalInput && (result.original_input || result.sanitized_input) && (
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
@@ -753,7 +876,7 @@ function LiveResultPanel({ result, label, showOriginalInput }: {
             <p className="text-xs text-slate-600 bg-slate-50 rounded-lg p-2.5 border border-slate-100 font-mono leading-relaxed max-h-40 overflow-y-auto">
               {result.original_input || result.synthetic_input || '—'}
             </p>
-            {result.sanitized_input && result.sanitized_input !== result.original_input && (
+            {result.sanitized_input && (
               <>
                 <h4 className="font-bold text-slate-700 text-xs uppercase tracking-wider mb-2 mt-3 flex items-center gap-1.5">
                   <ShieldAlert className="w-3.5 h-3.5 text-emerald-500" /> Sanitized Input Sent to AMD
@@ -778,20 +901,102 @@ function LiveResultPanel({ result, label, showOriginalInput }: {
         )}
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
           <h4 className="font-bold text-slate-700 text-xs uppercase tracking-wider mb-2 flex items-center gap-1.5">
-            <Zap className="w-3.5 h-3.5 text-rq-primary" /> Generated Advisory (from AMD vLLM)
+            <Zap className="w-3.5 h-3.5 text-rq-primary" /> {result.analysis_source === 'provider' ? 'AMD-Generated Situation Summary' : result.analysis_source === 'provider_incomplete' ? 'AMD-Generated Incomplete Summary' : 'Local Safe Fallback Summary'}
           </h4>
           {result.generated_advisory ? (
-            <p className="text-xs text-slate-800 bg-blue-50 rounded-lg p-2.5 border border-blue-100 leading-relaxed max-h-48 overflow-y-auto">
+            <p className={`text-xs rounded-lg p-2.5 border leading-relaxed max-h-48 overflow-y-auto ${result.analysis_source === 'provider' ? 'text-slate-800 bg-blue-50 border-blue-100' : result.analysis_source === 'provider_incomplete' ? 'text-amber-900 bg-amber-50 border-amber-200' : 'text-amber-900 bg-amber-50 border-amber-200'}`}>
               {result.generated_advisory}
             </p>
           ) : (
-            <p className="text-xs text-slate-400 italic">No advisory — verification did not succeed.</p>
+            <p className="text-xs text-slate-400 italic">No usable advisory was produced.</p>
           )}
           <span className="mt-2 inline-block bg-amber-100 text-amber-800 px-2 py-0.5 rounded text-[10px] font-bold">
             Human Review Required — Advisory only; no dispatch authority
           </span>
         </div>
       </div>
+
+      {result.semantic_issues && result.semantic_issues.length > 0 && (
+        <div className="bg-amber-50 rounded-xl border border-amber-300 shadow-sm p-4" data-testid="amd-semantic-issues">
+          <h4 className="font-bold text-amber-900 text-xs uppercase tracking-wider mb-2">Deterministic Completeness Defects</h4>
+          <ul className="list-disc pl-5 text-xs text-amber-900 space-y-1">
+            {result.semantic_issues.map((issue, index) => <li key={index}>{issue}</li>)}
+          </ul>
+        </div>
+      )}
+
+      {result.structured_output && (
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+            <h4 className="font-bold text-slate-700 text-xs uppercase tracking-wider">Structured Sections</h4>
+            <span className={`text-[10px] font-bold px-2 py-1 rounded ${result.analysis_source === 'provider' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
+              {result.analysis_source === 'provider' ? 'Complete provider output' : result.analysis_source === 'provider_incomplete' ? 'Incomplete provider output' : 'Local safe fallback'}
+            </span>
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 text-xs">
+            <StructuredBlock title="Situation Summary" value={result.structured_output.situation_summary} />
+            <StructuredBlock title="Critical Facts / Consolidated Incidents" value={result.structured_output.critical_facts || result.structured_output.consolidated_incidents} />
+            <StructuredBlock title="Contradictions" value={result.structured_output.contradictions} />
+            <StructuredBlock title="Superseded / Unverified Updates" value={[...(result.structured_output.superseded_updates || []), ...(result.structured_output.unverified_claims || [])]} />
+            <StructuredBlock title="Risk / Capacity / Resource Implications" value={result.structured_output.risk_escalators || result.structured_output.capacity_pressure || result.structured_output.resource_gaps} />
+            <StructuredBlock title="Route and Access Analysis" value={result.structured_output.route_and_access_analysis || result.structured_output.route_constraints} />
+            <StructuredBlock title="Ranked Operational Plan" value={result.structured_output.recommended_priorities || result.structured_output.prioritized_operational_plan} />
+            <StructuredBlock title="Missing Information / Coordinator Questions" value={result.structured_output.missing_information || result.structured_output.coordinator_questions || result.structured_output.missing_information_questions} />
+            <StructuredBlock title="Confidence / Warnings" value={[...(result.structured_output.confidence_notes || []), ...(result.structured_output.warnings || [])]} />
+          </div>
+        </div>
+      )}
+
+      {result.source_evidence_mapping && result.source_evidence_mapping.length > 0 && (
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+          <h4 className="font-bold text-slate-700 text-xs uppercase tracking-wider mb-3">Field | Source Evidence | Normalized Value | Confidence</h4>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <tbody>
+                {result.source_evidence_mapping.map((row, idx) => (
+                  <tr key={idx} className="border-b border-slate-100">
+                    <td className="py-2 pr-3 font-bold text-slate-700">{row.field}</td>
+                    <td className="py-2 pr-3 text-slate-500">{row.source_evidence}</td>
+                    <td className="py-2 pr-3 text-slate-800">{row.normalized_value}</td>
+                    <td className="py-2 text-slate-600">{row.confidence}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {(result.compact_json || result.structured_output || result.request_settings || result.context_budget) && (
+        <div className="bg-slate-900 text-white rounded-xl p-4">
+          <h4 className="font-bold text-slate-300 text-xs uppercase tracking-wider mb-2">Compact JSON</h4>
+          <pre className="text-xs whitespace-pre-wrap overflow-auto max-h-96">{JSON.stringify({
+            provenance: {
+              verified_live: result.verified_live,
+              provider_response_received: result.provider_response_received,
+              analysis_source: result.analysis_source,
+              fallback_used: result.fallback_used,
+              challenge_nonce: result.challenge_nonce,
+              nonce_sent_to_provider: result.nonce_sent_to_provider,
+              nonce_echoed_by_provider: result.nonce_echoed_by_provider,
+              verification_bound_to_nonce: result.verification_bound_to_nonce,
+            },
+            structured_output: result.compact_json || result.structured_output,
+            request_settings: result.request_settings,
+            context_budget: result.context_budget,
+            model_metadata: result.model_metadata,
+          }, null, 2)}</pre>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function StructuredBlock({ title, value }: { title: string; value: any }) {
+  return (
+    <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 min-h-24">
+      <div className="font-bold text-slate-500 uppercase tracking-wider text-[10px] mb-1">{title}</div>
+      <pre className="whitespace-pre-wrap break-words text-slate-800 font-sans">{typeof value === 'string' ? value : JSON.stringify(value ?? '—', null, 2)}</pre>
     </div>
   );
 }
@@ -827,7 +1032,7 @@ function BurstStat({ label, value, mono, green, red, amber }: {
 }
 
 function CaseDetailPanel({ c }: { c: BurstCaseResult }) {
-  const live = c.verified_live && !c.fallback_used;
+  const live = isVerified(c);
   return (
     <div className="space-y-2 text-xs">
       <div className="flex flex-wrap gap-4">
@@ -857,7 +1062,7 @@ function CaseDetailPanel({ c }: { c: BurstCaseResult }) {
       )}
       {c.generated_advisory && (
         <div>
-          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Generated Advisory</div>
+          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">{c.analysis_source === 'provider' ? 'AMD-Generated Advisory' : c.analysis_source === 'provider_incomplete' ? 'AMD-Generated Incomplete Advisory' : 'Local Safe Fallback Summary'}</div>
           <div className="bg-blue-50 border border-blue-100 rounded p-2 text-slate-700 leading-relaxed">{c.generated_advisory}</div>
           <span className="mt-1 inline-block bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded text-[10px] font-bold">Human Review Required</span>
         </div>

@@ -361,11 +361,12 @@ class OpenAICompatibleAdapter:
             return {
                 "status": "ok",
                 "verified_live": True,
-                "provider": "AMD Developer Cloud",
-                "runtime": "vLLM 0.23.0",
-                "accelerator": "AMD Instinct MI300X",
+                "provider": os.environ.get("AI_PROVIDER_LABEL") or "AMD Developer Cloud",
+                "runtime": os.environ.get("AI_RUNTIME_LABEL") or "vLLM 0.23.0",
+                "accelerator": os.environ.get("AI_ACCELERATOR_LABEL") or "AMD Instinct MI300X",
                 "served_model": served_model,
-                "underlying_model": "Qwen/Qwen2.5-7B-Instruct",
+                "served_model_from_provider": bool(data.get("model")),
+                "underlying_model": os.environ.get("OPENAI_COMPAT_UNDERLYING_MODEL") or "Qwen/Qwen2.5-7B-Instruct",
                 "request_id": request_id,
                 "verified_at": None,  # caller fills in
                 "latency_ms": latency_ms,
@@ -386,11 +387,12 @@ class OpenAICompatibleAdapter:
         return {
             "status": "ok",
             "verified_live": True,
-            "provider": "AMD Developer Cloud",
-            "runtime": "vLLM 0.23.0",
-            "accelerator": "AMD Instinct MI300X",
+            "provider": os.environ.get("AI_PROVIDER_LABEL") or "AMD Developer Cloud",
+            "runtime": os.environ.get("AI_RUNTIME_LABEL") or "vLLM 0.23.0",
+            "accelerator": os.environ.get("AI_ACCELERATOR_LABEL") or "AMD Instinct MI300X",
             "served_model": served_model,
-            "underlying_model": "Qwen/Qwen2.5-7B-Instruct",
+            "served_model_from_provider": bool(data.get("model")),
+            "underlying_model": os.environ.get("OPENAI_COMPAT_UNDERLYING_MODEL") or "Qwen/Qwen2.5-7B-Instruct",
             "request_id": request_id,
             "verified_at": None,  # caller fills in
             "latency_ms": latency_ms,
@@ -493,11 +495,12 @@ class OpenAICompatibleAdapter:
         return {
             "status": "ok",
             "verified_live": True,
-            "provider": "AMD Developer Cloud",
-            "runtime": "vLLM 0.23.0",
-            "accelerator": "AMD Instinct MI300X",
+            "provider": os.environ.get("AI_PROVIDER_LABEL") or "AMD Developer Cloud",
+            "runtime": os.environ.get("AI_RUNTIME_LABEL") or "vLLM 0.23.0",
+            "accelerator": os.environ.get("AI_ACCELERATOR_LABEL") or "AMD Instinct MI300X",
             "served_model": served_model,
-            "underlying_model": "Qwen/Qwen2.5-7B-Instruct",
+            "served_model_from_provider": bool(data.get("model")),
+            "underlying_model": os.environ.get("OPENAI_COMPAT_UNDERLYING_MODEL") or "Qwen/Qwen2.5-7B-Instruct",
             "request_id": request_id,
             "challenge_nonce": nonce,
             "verified_at": None,  # caller fills in
@@ -514,6 +517,95 @@ class OpenAICompatibleAdapter:
             "raw_content": content[:1000],
             "warnings": ["Human coordinator review required before any field action."],
             "error": None,
+        }
+
+    def complete_messages(
+        self,
+        messages: list[dict[str, str]],
+        *,
+        max_tokens: int,
+        response_format: str | None = "json_object",
+    ) -> dict[str, Any]:
+        """Run a bounded raw chat completion and return safe provider evidence."""
+        missing = self.config.missing_openai_env()
+        if missing:
+            result = _live_verify_failure("Missing required env: " + ", ".join(missing))
+            result["raw_content"] = None
+            return result
+        body: dict[str, Any] = {
+            "model": self.config.model,
+            "temperature": 0,
+            "max_tokens": int(max_tokens),
+            "messages": messages,
+        }
+        if response_format == "json_object":
+            body["response_format"] = {"type": "json_object"}
+        url = self.config.base_url.rstrip("/") + "/chat/completions"
+        encoded = json.dumps(body).encode("utf-8")
+        start = time.time()
+        try:
+            request = urllib.request.Request(
+                url,
+                data=encoded,
+                headers=self._request_headers(),
+                method="POST",
+            )
+            with urllib.request.urlopen(request, timeout=self.config.timeout_seconds) as response:
+                latency_ms = round((time.time() - start) * 1000)
+                raw = response.read().decode("utf-8")
+            data = json.loads(raw)
+            content = data["choices"][0]["message"]["content"]
+        except (TimeoutError, socket.timeout) as exc:
+            result = _live_verify_failure(f"timeout: {exc}")
+            result["raw_content"] = None
+            return result
+        except urllib.error.HTTPError as exc:
+            result = _live_verify_failure(f"HTTP {exc.code}: {_read_http_error_body(exc)}")
+            result["raw_content"] = None
+            return result
+        except (urllib.error.URLError, KeyError, IndexError, json.JSONDecodeError, OSError) as exc:
+            result = _live_verify_failure(f"provider_error: {exc}")
+            result["raw_content"] = None
+            return result
+        except Exception as exc:
+            result = _live_verify_failure(f"unexpected_error: {exc}")
+            result["raw_content"] = None
+            return result
+
+        usage = data.get("usage") or {}
+        finish_reason = None
+        try:
+            finish_reason = data["choices"][0].get("finish_reason")
+        except Exception:
+            finish_reason = None
+        return {
+            "status": "ok",
+            "verified_live": bool(data.get("id")) and bool(content),
+            "provider": os.environ.get("AI_PROVIDER_LABEL") or "AMD Developer Cloud",
+            "runtime": os.environ.get("AI_RUNTIME_LABEL") or "vLLM 0.23.0",
+            "accelerator": os.environ.get("AI_ACCELERATOR_LABEL") or "AMD Instinct MI300X",
+            "served_model": str(data.get("model") or self.config.model),
+            "served_model_from_provider": bool(data.get("model")),
+            "underlying_model": os.environ.get("OPENAI_COMPAT_UNDERLYING_MODEL") or "Qwen/Qwen2.5-7B-Instruct",
+            "request_id": str(data.get("id") or ""),
+            "verified_at": None,
+            "latency_ms": latency_ms,
+            "prompt_tokens": int(usage.get("prompt_tokens") or 0),
+            "completion_tokens": int(usage.get("completion_tokens") or 0),
+            "total_tokens": int(usage.get("total_tokens") or 0),
+            "fallback_used": False,
+            "human_review_required": True,
+            "generated_advisory": content[:1200],
+            "raw_content": content,
+            "warnings": ["Human coordinator review required before any field action."],
+            "error": None,
+            "finish_reason": finish_reason,
+            "request_settings": {
+                "max_tokens": int(max_tokens),
+                "temperature": 0,
+                "response_format": response_format or "none",
+                "model": self.config.model,
+            },
         }
 
     def _request_headers(self) -> dict[str, str]:
@@ -593,11 +685,12 @@ def _live_verify_failure(error: str) -> dict[str, Any]:
     return {
         "status": "failed",
         "verified_live": False,
-        "provider": "AMD Developer Cloud",
-        "runtime": "vLLM 0.23.0",
-        "accelerator": "AMD Instinct MI300X",
+        "provider": os.environ.get("AI_PROVIDER_LABEL") or "AMD Developer Cloud",
+        "runtime": os.environ.get("AI_RUNTIME_LABEL") or "vLLM 0.23.0",
+        "accelerator": os.environ.get("AI_ACCELERATOR_LABEL") or "AMD Instinct MI300X",
         "served_model": None,
-        "underlying_model": "Qwen/Qwen2.5-7B-Instruct",
+        "served_model_from_provider": False,
+        "underlying_model": os.environ.get("OPENAI_COMPAT_UNDERLYING_MODEL") or "Qwen/Qwen2.5-7B-Instruct",
         "request_id": None,
         "verified_at": None,
         "latency_ms": None,

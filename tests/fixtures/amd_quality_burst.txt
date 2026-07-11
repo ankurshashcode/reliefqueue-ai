@@ -1,0 +1,7 @@
+Judge-burst-1: Synthetic report — 9 people need drinking water near Clock Tower.
+
+Judge-burst-2: Synthetic report — elderly wheelchair user requires evacuation;
+north road blocked, south lane open.
+
+Judge-burst-3: Synthetic report — clinic has 12 insulin doses but 19 registered
+patients; coordinator review required.

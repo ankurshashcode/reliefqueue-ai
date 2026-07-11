@@ -105,7 +105,7 @@ class TestLiveVerifyMethod(unittest.TestCase):
         defaults = dict(
             mode="openai_compatible",
             base_url="http://test-amd.example.com/v1",
-            api_key="test-secret-key-abc123",
+            api_key="test-key",
             model="reliefqueue-amd",
             timeout_seconds=10.0,
             max_retries=0,
@@ -130,7 +130,7 @@ class TestLiveVerifyMethod(unittest.TestCase):
         with patch("urllib.request.urlopen", return_value=_mock_response(_vllm_response())):
             result = adapter.live_verify()
         rendered = json.dumps(result)
-        self.assertNotIn("test-secret-key-abc123", rendered)
+        self.assertNotIn("test-key", rendered)
         self.assertNotIn("Bearer", rendered)
 
     def test_successful_response_verified_live_true(self) -> None:
