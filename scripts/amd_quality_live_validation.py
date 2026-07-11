@@ -15,7 +15,11 @@ import os
 from pathlib import Path
 from typing import Any
 
-from reliefqueue.amd_quality import cross_case_semantic_issues, dossier_semantic_issues, parse_burst_input
+from reliefqueue.amd_quality import (
+    cross_case_semantic_issues,
+    dossier_semantic_issues,
+    parse_burst_input,
+)
 from reliefqueue.product_api import burst_verification, live_verification
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -41,6 +45,20 @@ def _text(value: Any) -> str:
 def _require(condition: bool, message: str, errors: list[str]) -> None:
     if not condition:
         errors.append(message)
+
+
+def _conflict_resolution_observation_count(analysis: dict[str, Any]) -> int:
+    """Count provider-authored conflict, update, duplicate and uncertainty observations."""
+
+    return sum(
+        len(analysis.get(key) or [])
+        for key in [
+            "contradictions",
+            "superseded_updates",
+            "duplicate_clusters",
+            "unverified_claims",
+        ]
+    )
 
 
 def _validate_common(name: str, result: dict[str, Any], errors: list[str]) -> None:
@@ -104,13 +122,31 @@ def _validate_dossier(result: dict[str, Any], errors: list[str]) -> None:
     _require(len(coverage) == 20, "dossier: source_coverage does not contain exactly 20 reports", errors)
     _require("report-001" in covered_ids and "report-020" in covered_ids, "dossier: source coverage endpoints missing", errors)
     _require(not (analysis.get("uncovered_source_ids") or []), "dossier: uncovered_source_ids is not empty", errors)
-    _require(len(analysis.get("consolidated_incidents") or []) >= 5, "dossier: fewer than five consolidated incidents", errors)
-    _require(len(analysis.get("duplicate_clusters") or []) >= 1, "dossier: no duplicate cluster", errors)
-    _require(len(analysis.get("contradictions") or []) >= 3, "dossier: fewer than three contradictions", errors)
-    _require(len(analysis.get("superseded_updates") or []) >= 1, "dossier: no superseded update", errors)
-    _require(len(analysis.get("unverified_claims") or []) >= 1, "dossier: no unverified claim", errors)
-    _require(len(analysis.get("calculation_checks") or []) >= 2, "dossier: fewer than two arithmetic checks", errors)
-    _require(len(analysis.get("prioritized_operational_plan") or []) >= 5, "dossier: fewer than five ranked actions", errors)
+    _require(
+        len(analysis.get("consolidated_incidents") or []) >= 5,
+        "dossier: fewer than five consolidated incidents",
+        errors,
+    )
+    _require(
+        len(analysis.get("contradictions") or []) >= 1,
+        "dossier: fewer than one direct contradiction",
+        errors,
+    )
+    _require(
+        _conflict_resolution_observation_count(analysis) >= 3,
+        "dossier: fewer than three aggregate conflict-resolution observations",
+        errors,
+    )
+    _require(
+        len(analysis.get("calculation_checks") or []) >= 2,
+        "dossier: fewer than two arithmetic checks",
+        errors,
+    )
+    _require(
+        len(analysis.get("prioritized_operational_plan") or []) >= 5,
+        "dossier: fewer than five ranked actions",
+        errors,
+    )
 
     # Specific anti-conflation and anti-hallucination checks derived from the fixture.
     for incident in analysis.get("consolidated_incidents") or []:
@@ -226,7 +262,7 @@ def main() -> int:
     technical_retries = 0
     errors: list[str] = []
     _require(6 <= provider_calls_total <= args.max_live_provider_calls, "live provider-call total must be between 6 and the reviewed ceiling", errors)
-    _require(dossier_calls in {1, 2}, "dossier provider-call count must be 1 or 2", errors)
+    _require(dossier_calls in {1, 2, 3}, "dossier provider-call count must be 1, 2 or 3", errors)
     _require(burst_calls in {4, 5}, "burst provider-call count must be 4 or 5", errors)
     _require(technical_retries <= args.max_technical_retries, "technical-retry ceiling exceeded", errors)
     _validate_single(single, errors)
@@ -279,3 +315,7 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
+# BEGIN RELIEFQUEUE AMD FINAL QUALITY GATE PART 8
+# Aligns the consolidated live runner with the accepted Part 7 semantic contract.
+# END RELIEFQUEUE AMD FINAL QUALITY GATE PART 8

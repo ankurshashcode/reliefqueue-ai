@@ -1,0 +1,175 @@
+{
+  "schema_version": "reliefqueue-dossier-analysis/v2",
+  "workload_mode": "complex_dossier",
+  "challenge_nonce": "1a05f47c8b40e024",
+  "output_contract": {
+    "source_id": "REPORT-001",
+    "disposition": "incident",
+    "linked_incident_id": "INCIDENT-001"
+  },
+  "source_evidence_index": [
+    {
+      "source_id": "REPORT-001",
+      "terms": ["Old Bus Stand", "families", "drinking water", "flooded"],
+      "numbers": ["14", "08:30"]
+    },
+    {
+      "source_id": "REPORT-002",
+      "terms": ["Bus stand", "piche", "log", "elderly", "north embankment", "boat", "pregnant"],
+      "numbers": ["18", "3"]
+    },
+    {
+      "source_id": "REPORT-003",
+      "terms": ["OLB BUS STN", "family", "water", "old ppl", "bridge rd", "closed"],
+      "numbers": ["1", "3"]
+    },
+    {
+      "source_id": "REPORT-006",
+      "terms": ["bridge", "collapsed"],
+      "numbers": ["200"]
+    },
+    {
+      "source_id": "REPORT-007",
+      "terms": ["bridge", "damaged", "boat"],
+      "numbers": []
+    },
+    {
+      "source_id": "REPORT-008",
+      "terms": ["capacity", "registered"],
+      "numbers": ["80", "67"]
+    },
+    {
+      "source_id": "REPORT-009",
+      "terms": ["capacity"],
+      "numbers": ["45", "41", "12"]
+    },
+    {
+      "source_id": "REPORT-010",
+      "terms": ["insulin", "small van", "truck"],
+      "numbers": ["36", "18", "4"]
+    },
+    {
+      "source_id": "REPORT-011",
+      "terms": ["insulin"],
+      "numbers": ["19", "12", "2"]
+    },
+    {
+      "source_id": "REPORT-012",
+      "terms": ["clinic road", "north road", "south lane", "small van", "truck"],
+      "numbers": []
+    },
+    {
+      "source_id": "REPORT-013",
+      "terms": ["boat"],
+      "numbers": ["6"]
+    },
+    {
+      "source_id": "REPORT-014",
+      "terms": ["boat"],
+      "numbers": []
+    },
+    {
+      "source_id": "REPORT-015",
+      "terms": ["pregnant", "chest pain", "textile", "clinic road"],
+      "numbers": []
+    },
+    {
+      "source_id": "REPORT-016",
+      "terms": ["wheelchair", "oxygen", "small van"],
+      "numbers": []
+    },
+    {
+      "source_id": "REPORT-018",
+      "terms": ["water purification", "dry food", "small van"],
+      "numbers": ["60", "120"]
+    },
+    {
+      "source_id": "REPORT-019",
+      "terms": ["transformer", "utility isolation"],
+      "numbers": ["50"]
+    },
+    {
+      "source_id": "REPORT-020",
+      "terms": ["capacity", "registered", "safe capacity"],
+      "numbers": ["80", "43", "67"]
+    }
+  ],
+  "consolidated_incidents": [
+    {
+      "incident_id": "INCIDENT-001",
+      "source_ids": ["REPORT-001", "REPORT-002", "REPORT-003"],
+      "location": "Old Bus Stand",
+      "needs": "drinking water, medical care, boat",
+      "people_range": "unverified 200-person claim",
+      "vulnerable_groups": "elderly, pregnant, children",
+      "urgency_rationale": "drinking water finished, bridge collapsed, transformer unsafe",
+      "missing_fields": "exact location, specific needs",
+      "confidence": "low"
+    }
+  ],
+  "duplicate_clusters": [
+    {
+      "source_ids": ["REPORT-001", "REPORT-003"],
+      "reason": "same landmark, different counts"
+    },
+    {
+      "source_ids": ["REPORT-013", "REPORT-014"],
+      "reason": "same group, different counts"
+    }
+  ],
+  "contradictions": [
+    {
+      "source_ids": ["REPORT-006", "REPORT-007"],
+      "conflict": "bridge collapsed vs. damaged",
+      "working_assumption": "bridge damaged, not collapsed"
+    }
+  ],
+  "superseded_updates": [],
+  "unverified_claims": [
+    {
+      "source_ids": ["REPORT-006"],
+      "claim": "200 people trapped",
+      "verification_needed": "photo, source"
+    }
+  ],
+  "people_count_ranges": ["unverified 200-person claim"],
+  "resource_gaps": [],
+  "capacity_pressure": ["67 - 43 = 24 over capacity"],
+  "calculation_checks": [
+    {
+      "label": "effective shelter capacity and overflow",
+      "source_ids": ["REPORT-009"],
+      "inputs": ["stated capacity 45", "current register 41", "unusable beds 12"],
+      "formula": "45 - 12 = 33; 41 - 33",
+      "result": 8
+    },
+    {
+      "label": "insulin dose shortfall range",
+      "source_ids": ["REPORT-011"],
+      "inputs": ["listed patients 19", "available doses 12", "possible duplicate patients 2"],
+      "formula": "19 - 12; (19 - 2) - 12",
+      "result": {"before_reconciliation": 7, "if_all_possible_duplicates_confirmed": 5}
+    },
+    {
+      "label": "safe-capacity overflow",
+      "source_ids": ["REPORT-020"],
+      "inputs": ["previous capacity 80", "safe capacity 43", "registered 67"],
+      "formula": "67 - 43",
+      "result": 24
+    }
+  ],
+  "route_constraints": [],
+  "cross_incident_dependencies": [],
+  "do_not_merge_notes": [],
+  "prioritized_operational_plan": [
+    {"rank": 1, "action": "Verify water supply", "reason": "Old Bus Stand", "dependency": "none", "verify_before_action": "water trucks"},
+    {"rank": 2, "action": "Assess bridge damage", "reason": "Main bridge", "dependency": "none", "verify_before_action": "engineer inspection"},
+    {"rank": 3, "action": "Distribute insulin", "reason": "Insulin-dependent patients", "dependency": "none", "verify_before_action": "pharmacy check"}
+  ],
+  "missing_information_questions": ["Exact location of bridge collapse", "Status of east road transformer zone"],
+  "coordinator_review_gates": ["Review all unverified claims", "Confirm bridge condition", "Calculate resource gaps"],
+  "confidence_notes": ["Low confidence due to unverified claims and conflicting reports"],
+  "warnings": ["Unverified 200-person claim", "Conflicting bridge reports"],
+  "quality_self_check": {"all_sources_covered": true, "numeric_facts_preserved": true, "unsupported_resource_gaps_avoided": true, "later_updates_preserved": true},
+  "human_review_required": true
+}

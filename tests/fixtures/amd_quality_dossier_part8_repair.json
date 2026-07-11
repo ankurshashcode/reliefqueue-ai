@@ -1,0 +1,305 @@
+{
+  "schema_version": "reliefqueue-dossier-analysis/v2",
+  "workload_mode": "complex_dossier",
+  "challenge_nonce": "ed6a85c4146a32d3",
+  "output_contract": {
+    "source_id": "REPORT-001",
+    "disposition": "incident",
+    "linked_incident_id": "INCIDENT-001"
+  },
+  "source_evidence_index": [
+    {
+      "source_id": "REPORT-001",
+      "terms": [],
+      "numbers": [
+        "14",
+        "08:30"
+      ]
+    },
+    {
+      "source_id": "REPORT-002",
+      "terms": [
+        "pregnant"
+      ],
+      "numbers": [
+        "18",
+        "3"
+      ]
+    },
+    {
+      "source_id": "REPORT-003",
+      "terms": [],
+      "numbers": [
+        "3"
+      ]
+    },
+    {
+      "source_id": "REPORT-006",
+      "terms": [
+        "bridge",
+        "collapsed"
+      ],
+      "numbers": [
+        "200"
+      ]
+    },
+    {
+      "source_id": "REPORT-007",
+      "terms": [
+        "bridge",
+        "collapsed",
+        "damaged",
+        "boat"
+      ],
+      "numbers": []
+    },
+    {
+      "source_id": "REPORT-008",
+      "terms": [
+        "capacity",
+        "registered"
+      ],
+      "numbers": [
+        "80",
+        "67"
+      ]
+    },
+    {
+      "source_id": "REPORT-009",
+      "terms": [
+        "capacity"
+      ],
+      "numbers": [
+        "45",
+        "41",
+        "12"
+      ]
+    },
+    {
+      "source_id": "REPORT-010",
+      "terms": [
+        "insulin",
+        "small van",
+        "high-clearance truck"
+      ],
+      "numbers": [
+        "36",
+        "18",
+        "4"
+      ]
+    },
+    {
+      "source_id": "REPORT-011",
+      "terms": [
+        "insulin"
+      ],
+      "numbers": [
+        "19",
+        "12",
+        "2"
+      ]
+    },
+    {
+      "source_id": "REPORT-012",
+      "terms": [
+        "clinic road",
+        "north road",
+        "south lane",
+        "small van",
+        "high-clearance truck"
+      ],
+      "numbers": []
+    },
+    {
+      "source_id": "REPORT-013",
+      "terms": [
+        "boat"
+      ],
+      "numbers": [
+        "6"
+      ]
+    },
+    {
+      "source_id": "REPORT-014",
+      "terms": [
+        "boat"
+      ],
+      "numbers": []
+    },
+    {
+      "source_id": "REPORT-015",
+      "terms": [
+        "pregnant",
+        "chest pain",
+        "textile",
+        "clinic road"
+      ],
+      "numbers": []
+    },
+    {
+      "source_id": "REPORT-016",
+      "terms": [
+        "wheelchair",
+        "oxygen",
+        "small van"
+      ],
+      "numbers": []
+    },
+    {
+      "source_id": "REPORT-018",
+      "terms": [
+        "water purification",
+        "dry food",
+        "small van"
+      ],
+      "numbers": [
+        "60",
+        "120"
+      ]
+    },
+    {
+      "source_id": "REPORT-019",
+      "terms": [
+        "transformer",
+        "utility isolation"
+      ],
+      "numbers": [
+        "50"
+      ]
+    },
+    {
+      "source_id": "REPORT-020",
+      "terms": [
+        "capacity",
+        "registered",
+        "safe capacity"
+      ],
+      "numbers": [
+        "80",
+        "43",
+        "67"
+      ]
+    }
+  ],
+  "consolidated_incidents": [
+    {
+      "incident_id": "INCIDENT-001",
+      "source_ids": [
+        "REPORT-001"
+      ],
+      "location": "Old Bus Stand",
+      "needs": "drinking water",
+      "people_range": "14; unverified",
+      "vulnerable_groups": "children",
+      "urgency_rationale": "water finished at 08:30",
+      "missing_fields": "flooded lane",
+      "confidence": "high"
+    },
+    {
+      "incident_id": "INCIDENT-002",
+      "source_ids": [
+        "REPORT-002"
+      ],
+      "location": "Bus stand ke piche",
+      "needs": "rescue, water",
+      "people_range": "18 + 3; unverified",
+      "vulnerable_groups": "elderly, pregnant",
+      "urgency_rationale": "water supply issue, building risk",
+      "missing_fields": "location details",
+      "confidence": "medium"
+    },
+    {
+      "incident_id": "INCIDENT-003",
+      "source_ids": [
+        "REPORT-003"
+      ],
+      "location": "OLB BUS STN",
+      "needs": "water",
+      "people_range": "1B family; unverified",
+      "vulnerable_groups": "elderly",
+      "urgency_rationale": "water supply issue",
+      "missing_fields": "location details",
+      "confidence": "low"
+    },
+    {
+      "incident_id": "INCIDENT-004",
+      "source_ids": [
+        "REPORT-006"
+      ],
+      "location": "main bridge",
+      "needs": "rescue",
+      "people_range": "200; unverified",
+      "vulnerable_groups": "trapped",
+      "urgency_rationale": "bridge collapsed",
+      "missing_fields": "photo metadata",
+      "confidence": "low"
+    },
+    {
+      "incident_id": "INCIDENT-005",
+      "source_ids": [
+        "REPORT-007"
+      ],
+      "location": "main bridge",
+      "needs": "rescue",
+      "people_range": "unspecified; unverified",
+      "vulnerable_groups": "pedestrians",
+      "urgency_rationale": "damaged, not collapsed",
+      "missing_fields": "lane status",
+      "confidence": "medium"
+    }
+  ],
+  "calculation_checks": [
+    {
+      "label": "effective shelter capacity and overflow",
+      "source_ids": [
+        "REPORT-009"
+      ],
+      "inputs": [
+        "stated capacity 45",
+        "current register 41",
+        "unusable beds 12"
+      ],
+      "formula": "45 - 12 = 33; 41 - 33",
+      "result": 8
+    },
+    {
+      "label": "insulin dose shortfall range",
+      "source_ids": [
+        "REPORT-011"
+      ],
+      "inputs": [
+        "listed patients 19",
+        "available doses 12",
+        "possible duplicate patients 2"
+      ],
+      "formula": "19 - 12; (19 - 2) - 12",
+      "result": {
+        "before_reconciliation": 7,
+        "if_all_possible_duplicates_confirmed": 5
+      }
+    },
+    {
+      "label": "safe-capacity overflow",
+      "source_ids": [
+        "REPORT-020"
+      ],
+      "inputs": [
+        "previous capacity 80",
+        "safe capacity 43",
+        "registered 67"
+      ],
+      "formula": "67 - 43",
+      "result": 24
+    }
+  ],
+  "deterministic_semantic_issues": {
+    "truthfulness": [
+      "consolidated_incidents merges source reports with distinct explicit locations: REPORT-001, REPORT-002",
+      "REPORT-006 unverified 200-person claim appears as a confirmed people range"
+    ],
+    "calculation_gaps": [
+      "calculation_checks missing source-linked row for safe-capacity overflow"
+    ]
+  },
+  "human_review_required": true
+}

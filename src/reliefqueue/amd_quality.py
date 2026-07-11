@@ -33,6 +33,7 @@ WORKLOAD_COMPLETION_BUDGETS = {
     "burst_case": 900,
     "cross_case_synthesis": 1600,
     "cross_case_synthesis_repair": 1400,
+    "complex_dossier_incident_supplement": 1400,
 }
 # END RELIEFQUEUE AMD DOSSIER COMPLETION REPAIR PART 2
 
@@ -2229,6 +2230,90 @@ def _reconcile_provider_incidents(
 
 
 # BEGIN RELIEFQUEUE AMD DOSSIER PROVIDER RECONCILIATION PART 5
+
+_PROVIDER_CONFLICT_OBSERVATION_KEYS = (
+    "contradictions",
+    "superseded_updates",
+    "duplicate_clusters",
+    "unverified_claims",
+)
+
+
+def _provider_conflict_observation_counts(
+    record: dict[str, Any],
+) -> dict[str, int]:
+    return {
+        key: len(record.get(key) or [])
+        for key in _PROVIDER_CONFLICT_OBSERVATION_KEYS
+    }
+
+
+def _provider_conflict_observation_safety_issues(
+    record: dict[str, Any],
+    source_text: str,
+) -> list[str]:
+    """Validate source-linked provider conflict observations before carrying.
+
+    This gate is intentionally narrower than full dossier completeness. It
+    permits an otherwise incomplete initial provider response to contribute
+    only its already source-linked conflict, update, duplicate and uncertainty
+    observations to a repair response that omitted those sections.
+    """
+
+    ledger = build_dossier_reasoning_ledger(source_text)
+    expected_ids = set(ledger["expected_report_ids"])
+    counts = _provider_conflict_observation_counts(record)
+    issues: list[str] = []
+
+    if counts["contradictions"] < 1:
+        issues.append("initial provider has no direct contradiction")
+    if sum(counts.values()) < 3:
+        issues.append(
+            "initial provider has fewer than three conflict-resolution observations"
+        )
+
+    unverified_text = json.dumps(
+        record.get("unverified_claims") or [],
+        ensure_ascii=False,
+    ).lower()
+    if "report-006" not in unverified_text or "200" not in unverified_text:
+        issues.append(
+            "initial provider does not preserve REPORT-006 as an unverified 200-person claim"
+        )
+
+    unknown_ids: set[str] = set()
+    for key in _PROVIDER_CONFLICT_OBSERVATION_KEYS:
+        for row in record.get(key) or []:
+            if not isinstance(row, dict):
+                continue
+            referenced: list[str] = []
+            referenced.extend(
+                str(value).upper()
+                for value in row.get("source_ids") or []
+                if value
+            )
+            for scalar_key in (
+                "source_id",
+                "older_source_id",
+                "newer_source_id",
+            ):
+                value = row.get(scalar_key)
+                if value:
+                    referenced.append(str(value).upper())
+            unknown_ids.update(
+                source_id
+                for source_id in referenced
+                if source_id not in expected_ids
+            )
+    if unknown_ids:
+        issues.append(
+            "initial provider conflict observations reference unknown sources: "
+            + ", ".join(sorted(unknown_ids))
+        )
+
+    return issues
+
+
 def reconcile_provider_dossier_outputs(
     initial: dict[str, Any],
     repair: dict[str, Any],
@@ -2237,8 +2322,9 @@ def reconcile_provider_dossier_outputs(
     """Reconcile two provider-authored dossier records without local analysis.
 
     The repair response is authoritative when it supplies a source-safe field.
-    Missing core metadata and source-coverage rows are retained from the initial
-    provider response. When source text is supplied, provider-authored incidents
+    Missing core metadata, source-coverage rows and source-safe conflict
+    observations are retained from the initial provider response when the repair
+    omitted them. When source text is supplied, provider-authored incidents
     that violate the existing location/unverified-count truth gates are
     quarantined and non-overlapping provider incidents from the initial response
     are retained. Priority items are deduplicated with repair items first and
@@ -2269,6 +2355,38 @@ def reconcile_provider_dossier_outputs(
         if repair_value in (None, "", [], {}) and initial_value not in (None, "", [], {}):
             merged[key] = copy.deepcopy(initial_value)
             carried_fields.append(key)
+
+    conflict_reconciliation: dict[str, Any] = {
+        "repair_counts": _provider_conflict_observation_counts(repair),
+        "initial_counts": _provider_conflict_observation_counts(initial),
+        "merged_counts": _provider_conflict_observation_counts(merged),
+        "carried_initial_provider_fields": [],
+        "source_safety_issues": [],
+        "local_conflict_observations_added": False,
+    }
+    if source_text:
+        conflict_reconciliation["source_safety_issues"] = (
+            _provider_conflict_observation_safety_issues(
+                initial,
+                source_text,
+            )
+        )
+        if not conflict_reconciliation["source_safety_issues"]:
+            for key in _PROVIDER_CONFLICT_OBSERVATION_KEYS:
+                repair_value = merged.get(key)
+                initial_value = initial.get(key)
+                if (
+                    repair_value in (None, "", [], {})
+                    and initial_value not in (None, "", [], {})
+                ):
+                    merged[key] = copy.deepcopy(initial_value)
+                    carried_fields.append(key)
+                    conflict_reconciliation[
+                        "carried_initial_provider_fields"
+                    ].append(key)
+    conflict_reconciliation["merged_counts"] = (
+        _provider_conflict_observation_counts(merged)
+    )
 
     incident_reconciliation: dict[str, Any] = {
         "repair_incident_count": len(
@@ -2376,6 +2494,7 @@ def reconcile_provider_dossier_outputs(
             quarantined_resource_claims
         ),
         "provider_incident_reconciliation": incident_reconciliation,
+        "provider_conflict_reconciliation": conflict_reconciliation,
         "carried_fields": carried_fields,
         "carried_source_ids": carried_source_ids,
         "repair_plan_count": len(repair_plan),
@@ -2389,7 +2508,441 @@ def reconcile_provider_dossier_outputs(
     return merged, evidence
 # END RELIEFQUEUE AMD DOSSIER PROVIDER RECONCILIATION PART 5
 
+# BEGIN RELIEFQUEUE AMD DOSSIER CONFLICT-OBSERVATION RECONCILIATION PART 8B
+# Carries only source-safe provider-authored conflict/update/duplicate/uncertainty
+# observations when a repair response omits those sections.
+# END RELIEFQUEUE AMD DOSSIER CONFLICT-OBSERVATION RECONCILIATION PART 8B
+
 # BEGIN RELIEFQUEUE AMD DOSSIER UNSUPPORTED-CLAIM QUARANTINE PART 6
 # Deterministically removes only provider-authored resource-gap claims rejected
 # by the existing source-truth gate. It adds no replacement fact or action.
 # END RELIEFQUEUE AMD DOSSIER UNSUPPORTED-CLAIM QUARANTINE PART 6
+
+
+# BEGIN RELIEFQUEUE AMD DOSSIER TARGETED INCIDENT SUPPLEMENT PART 8C
+
+def _incident_supplement_targets(
+    provider_reconciliation: dict[str, Any] | None,
+) -> dict[str, Any]:
+    reconciliation = (
+        provider_reconciliation
+        if isinstance(provider_reconciliation, dict)
+        else {}
+    )
+    incident_evidence = reconciliation.get(
+        "provider_incident_reconciliation"
+    )
+    if not isinstance(incident_evidence, dict):
+        incident_evidence = {}
+
+    allowed_source_ids: list[str] = []
+    location_conflicts: list[list[str]] = []
+    quarantined: list[dict[str, Any]] = []
+    for key in (
+        "quarantined_repair_incidents",
+        "quarantined_initial_incidents",
+    ):
+        rows = incident_evidence.get(key) or []
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            quarantined.append(copy.deepcopy(row))
+            for value in row.get("source_ids") or []:
+                source_id = str(value).upper()
+                if source_id and source_id not in allowed_source_ids:
+                    allowed_source_ids.append(source_id)
+            for pair in row.get("location_conflicts") or []:
+                if not isinstance(pair, list) or len(pair) != 2:
+                    continue
+                normalized = [str(value).upper() for value in pair]
+                if normalized not in location_conflicts:
+                    location_conflicts.append(normalized)
+
+    merged_count = int(incident_evidence.get("merged_incident_count") or 0)
+    needed_count = max(0, DOSSIER_MIN_INCIDENTS - merged_count)
+    return {
+        "allowed_source_ids": allowed_source_ids,
+        "location_conflicts": location_conflicts,
+        "quarantined_provider_incidents": quarantined,
+        "merged_incident_count": merged_count,
+        "minimum_additional_incidents": needed_count,
+    }
+
+
+def dossier_incident_supplement_required(
+    semantic_issues: list[str],
+    provider_reconciliation: dict[str, Any] | None,
+) -> bool:
+    """Allow one narrow provider follow-up for an incident-count-only miss."""
+
+    issues = [str(value) for value in semantic_issues if str(value)]
+    if not issues:
+        return False
+    if not all(
+        re.match(
+            r"^consolidated_incidents requires at least \d+ items, got \d+$",
+            issue,
+        )
+        for issue in issues
+    ):
+        return False
+
+    targets = _incident_supplement_targets(provider_reconciliation)
+    return bool(
+        targets["allowed_source_ids"]
+        and targets["minimum_additional_incidents"] > 0
+    )
+
+
+def build_dossier_incident_supplement_prompt(
+    sanitized_input: str,
+    current_output: dict[str, Any],
+    semantic_issues: list[str],
+    provider_reconciliation: dict[str, Any],
+    challenge_nonce: str,
+) -> list[dict[str, str]]:
+    """Request only corrected provider incidents after one full rewrite.
+
+    This is deliberately narrower than a second full-dossier rewrite. The
+    provider receives only the quarantined source IDs, their exact source text,
+    explicit duplicate/location constraints and compact existing incident
+    references. It must cover every quarantined source exactly once without
+    merging distinct explicit locations.
+    """
+
+    nonce = str(challenge_nonce or "")
+    if not nonce:
+        raise ValueError("challenge_nonce is required")
+
+    targets = _incident_supplement_targets(provider_reconciliation)
+    allowed_ids = targets["allowed_source_ids"]
+    if not allowed_ids:
+        raise ValueError("no quarantined provider incident sources available")
+
+    ledger = build_dossier_reasoning_ledger(sanitized_input)
+    allowed_set = set(allowed_ids)
+    relevant_reports: list[dict[str, Any]] = []
+    for row in ledger.get("reports") or []:
+        if not isinstance(row, dict):
+            continue
+        source_id = str(row.get("source_id") or "").upper()
+        body = str(row.get("text") or "")
+        linked_update = any(value in body.upper() for value in allowed_ids)
+        if source_id in allowed_set or linked_update:
+            relevant_reports.append(
+                {
+                    "source_id": source_id,
+                    "header": str(row.get("header") or ""),
+                    "text": body,
+                    "locations": list(row.get("location_terms") or []),
+                }
+            )
+
+    duplicate_pairs = [
+        [str(value).upper() for value in pair]
+        for pair in ledger.get("explicit_duplicate_pairs") or []
+        if isinstance(pair, list)
+        and len(pair) == 2
+        and set(str(value).upper() for value in pair).issubset(allowed_set)
+    ]
+    current_incidents = [
+        {
+            "incident_id": str(row.get("incident_id") or ""),
+            "source_ids": [
+                str(value).upper()
+                for value in row.get("source_ids") or []
+                if value
+            ],
+            "location": str(row.get("location") or ""),
+        }
+        for row in current_output.get("consolidated_incidents") or []
+        if isinstance(row, dict)
+    ]
+
+    incident_schema = {
+        "incident_id": "string",
+        "source_ids": ["REPORT-001"],
+        "location": "string",
+        "needs": "string or list",
+        "people_range": "string",
+        "vulnerable_groups": "string or list",
+        "urgency_rationale": "string",
+        "missing_fields": "string or list",
+        "confidence": "low|medium|high",
+    }
+    payload = {
+        "workload_mode": "complex_dossier_incident_supplement",
+        "challenge_nonce": nonce,
+        "output_contract": {
+            "schema_version": (
+                "reliefqueue-dossier-incident-supplement/v1"
+            ),
+            "workload_mode": (
+                "complex_dossier_incident_supplement"
+            ),
+            "challenge_nonce": nonce,
+            "corrected_incidents": [incident_schema],
+            "human_review_required": True,
+        },
+        "deterministic_semantic_issues": list(semantic_issues),
+        "allowed_source_ids": allowed_ids,
+        "required_source_coverage": (
+            "Every allowed_source_id exactly once across corrected_incidents."
+        ),
+        "minimum_additional_incidents": max(
+            1,
+            int(targets["minimum_additional_incidents"]),
+        ),
+        "forbidden_location_merges": targets["location_conflicts"],
+        "explicit_duplicate_pairs": duplicate_pairs,
+        "source_reports": relevant_reports,
+        "already_valid_incidents": current_incidents,
+        "rules": [
+            "Return only the incident supplement contract, not a full dossier.",
+            "Use only allowed_source_ids in corrected_incidents.",
+            "Cover every allowed source exactly once.",
+            "Never put a forbidden_location_merges pair in one incident.",
+            "Use distinct incident_id values not used by already_valid_incidents.",
+            "Do not repeat source IDs already used by already_valid_incidents.",
+            "Qualify any unverified people count as unverified or claimed.",
+            "Do not invent actions, shortages, locations or completed work.",
+            "human_review_required must be true.",
+        ],
+    }
+    return [
+        {
+            "role": "system",
+            "content": (
+                "Return one strict JSON object only. Produce a narrow corrected "
+                "incident supplement for quarantined provider incidents. Cover "
+                "every allowed source ID exactly once, keep distinct locations "
+                "separate, preserve explicit duplicate pairs, echo the nonce, "
+                "and add no unrelated source, action or conclusion."
+            ),
+        },
+        {
+            "role": "user",
+            "content": json.dumps(
+                payload,
+                ensure_ascii=False,
+                separators=(",", ":"),
+            ),
+        },
+    ]
+
+
+def normalize_dossier_incident_supplement(
+    content: str,
+) -> tuple[dict[str, Any], list[str], str]:
+    """Normalize a provider-authored incident supplement without synthesis."""
+
+    warnings: list[str] = []
+    parsed = _parse_json_maybe_enveloped(content)
+    if not isinstance(parsed, dict):
+        return (
+            {
+                "schema_version": (
+                    "reliefqueue-dossier-incident-supplement/v1"
+                ),
+                "workload_mode": (
+                    "complex_dossier_incident_supplement"
+                ),
+                "challenge_nonce": "",
+                "corrected_incidents": [],
+                "human_review_required": True,
+            },
+            [
+                "Incident supplement was not a provider JSON object; "
+                "no incident was added."
+            ],
+            "local_safe_fallback",
+        )
+
+    if (
+        not isinstance(parsed.get("corrected_incidents"), list)
+        and isinstance(parsed.get("output_contract"), dict)
+        and isinstance(
+            parsed["output_contract"].get("corrected_incidents"),
+            list,
+        )
+    ):
+        parsed = parsed["output_contract"]
+        warnings.append(
+            "Provider incident supplement envelope was canonicalized "
+            "without local synthesis."
+        )
+
+    normalized = {
+        "schema_version": str(
+            parsed.get("schema_version")
+            or "reliefqueue-dossier-incident-supplement/v1"
+        ),
+        "workload_mode": str(
+            parsed.get("workload_mode")
+            or "complex_dossier_incident_supplement"
+        ),
+        "challenge_nonce": str(parsed.get("challenge_nonce") or ""),
+        "corrected_incidents": [
+            copy.deepcopy(row)
+            for row in parsed.get("corrected_incidents") or []
+            if isinstance(row, dict)
+        ],
+        "human_review_required": True,
+    }
+    source = (
+        "provider"
+        if normalized["challenge_nonce"]
+        and normalized["corrected_incidents"]
+        else "provider_incomplete"
+    )
+    if not normalized["corrected_incidents"]:
+        warnings.append(
+            "Provider incident supplement contained no corrected incidents."
+        )
+    return normalized, warnings, source
+
+
+def reconcile_provider_incident_supplement(
+    current_output: dict[str, Any],
+    supplement: dict[str, Any],
+    source_text: str,
+    provider_reconciliation: dict[str, Any],
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Merge only source-safe provider-authored corrected incidents."""
+
+    merged = copy.deepcopy(current_output)
+    ledger = build_dossier_reasoning_ledger(source_text)
+    targets = _incident_supplement_targets(provider_reconciliation)
+    allowed_ids = set(targets["allowed_source_ids"])
+
+    existing = [
+        copy.deepcopy(row)
+        for row in merged.get("consolidated_incidents") or []
+        if isinstance(row, dict)
+    ]
+    used_source_ids = {
+        source_id
+        for row in existing
+        for source_id in _provider_incident_source_ids(row)
+    }
+    used_incident_ids = {
+        str(row.get("incident_id") or "")
+        for row in existing
+        if row.get("incident_id")
+    }
+
+    accepted: list[dict[str, Any]] = []
+    rejected: list[dict[str, Any]] = []
+    covered: set[str] = set()
+    quarantined_people_ranges: list[dict[str, Any]] = []
+
+    for row in supplement.get("corrected_incidents") or []:
+        if not isinstance(row, dict):
+            continue
+        source_ids = _provider_incident_source_ids(row)
+        incident_id = str(row.get("incident_id") or "")
+        reasons: list[str] = []
+
+        unknown = sorted(set(source_ids) - allowed_ids)
+        overlap_existing = sorted(set(source_ids) & used_source_ids)
+        overlap_supplement = sorted(set(source_ids) & covered)
+        conflicts = _provider_incident_location_conflicts(row, ledger)
+
+        if not incident_id:
+            reasons.append("missing incident_id")
+        elif incident_id in used_incident_ids:
+            reasons.append("incident_id already used by a valid incident")
+        if not source_ids:
+            reasons.append("missing source_ids")
+        if unknown:
+            reasons.append(
+                "source_ids outside quarantined set: " + ", ".join(unknown)
+            )
+        if overlap_existing:
+            reasons.append(
+                "source_ids already used by valid incidents: "
+                + ", ".join(overlap_existing)
+            )
+        if overlap_supplement:
+            reasons.append(
+                "source_ids repeated across supplement incidents: "
+                + ", ".join(overlap_supplement)
+            )
+        if conflicts:
+            reasons.append(
+                "merged reports with distinct explicit locations"
+            )
+
+        if reasons:
+            rejected.append(
+                {
+                    "incident_id": incident_id,
+                    "source_ids": source_ids,
+                    "location_conflicts": conflicts,
+                    "reasons": reasons,
+                }
+            )
+            continue
+
+        item, people_finding = _quarantine_unverified_people_range(
+            row,
+            ledger,
+        )
+        if people_finding:
+            quarantined_people_ranges.append(people_finding)
+        accepted.append(item)
+        covered.update(source_ids)
+        used_source_ids.update(source_ids)
+        used_incident_ids.add(incident_id)
+
+    merged["consolidated_incidents"] = existing + accepted
+
+    incident_by_source: dict[str, str] = {}
+    for row in accepted:
+        incident_id = str(row.get("incident_id") or "")
+        for source_id in _provider_incident_source_ids(row):
+            incident_by_source[source_id] = incident_id
+
+    if incident_by_source:
+        coverage_rows: list[dict[str, Any]] = []
+        for row in merged.get("source_coverage") or []:
+            if not isinstance(row, dict):
+                continue
+            item = copy.deepcopy(row)
+            source_id = str(item.get("source_id") or "").upper()
+            if source_id in incident_by_source:
+                item["linked_incident_id"] = incident_by_source[source_id]
+            coverage_rows.append(item)
+        merged["source_coverage"] = coverage_rows
+
+    missing_allowed = sorted(allowed_ids - covered)
+    evidence = {
+        "strategy": "targeted_provider_incident_supplement",
+        "allowed_source_ids": targets["allowed_source_ids"],
+        "minimum_additional_incidents": (
+            targets["minimum_additional_incidents"]
+        ),
+        "provider_corrected_incident_count": len(
+            supplement.get("corrected_incidents") or []
+        ),
+        "accepted_provider_incidents": [
+            {
+                "incident_id": str(row.get("incident_id") or ""),
+                "source_ids": _provider_incident_source_ids(row),
+            }
+            for row in accepted
+        ],
+        "rejected_provider_incidents": rejected,
+        "covered_allowed_source_ids": sorted(covered),
+        "missing_allowed_source_ids": missing_allowed,
+        "quarantined_unverified_people_ranges": (
+            quarantined_people_ranges
+        ),
+        "source_coverage_links_normalized": bool(incident_by_source),
+        "local_incident_conclusions_added": False,
+        "complete_source_partition": not missing_allowed,
+    }
+    return merged, evidence
+
+
+# END RELIEFQUEUE AMD DOSSIER TARGETED INCIDENT SUPPLEMENT PART 8C

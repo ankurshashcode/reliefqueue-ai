@@ -1,0 +1,151 @@
+{
+  "strategy": "repair_fields_with_initial_provider_gap_fill",
+  "analysis_inputs": [
+    "initial_provider_json",
+    "repair_provider_json"
+  ],
+  "local_operational_conclusions_added": false,
+  "unsupported_provider_claims_removed": false,
+  "quarantined_unsupported_resource_gap_claims": [],
+  "provider_incident_reconciliation": {
+    "repair_incident_count": 1,
+    "initial_incident_count": 5,
+    "merged_incident_count": 4,
+    "quarantined_repair_incidents": [
+      {
+        "incident_id": "INCIDENT-001",
+        "source_ids": [
+          "REPORT-001",
+          "REPORT-002",
+          "REPORT-003"
+        ],
+        "location_conflicts": [
+          [
+            "REPORT-001",
+            "REPORT-002"
+          ]
+        ],
+        "reason": "provider incident merged source reports with distinct explicit locations"
+      }
+    ],
+    "quarantined_initial_incidents": [
+      {
+        "incident_id": "INCIDENT-001",
+        "source_ids": [
+          "REPORT-001",
+          "REPORT-002",
+          "REPORT-003"
+        ],
+        "location_conflicts": [
+          [
+            "REPORT-001",
+            "REPORT-002"
+          ]
+        ],
+        "reason": "initial provider incident merged source reports with distinct explicit locations"
+      }
+    ],
+    "quarantined_unverified_people_ranges": [
+      {
+        "incident_id": "INCIDENT-003",
+        "source_ids": [
+          "REPORT-006"
+        ],
+        "removed_people_range": "200",
+        "reason": "provider people_range presented an explicitly unverified 200-person claim without a qualifier"
+      }
+    ],
+    "carried_initial_provider_incidents": [
+      {
+        "incident_id": "INCIDENT-002",
+        "source_ids": [
+          "REPORT-005"
+        ]
+      },
+      {
+        "incident_id": "INCIDENT-003",
+        "source_ids": [
+          "REPORT-006",
+          "REPORT-007"
+        ]
+      },
+      {
+        "incident_id": "INCIDENT-004",
+        "source_ids": [
+          "REPORT-008"
+        ]
+      },
+      {
+        "incident_id": "INCIDENT-005",
+        "source_ids": [
+          "REPORT-009"
+        ]
+      }
+    ],
+    "skipped_initial_provider_incident_overlaps": [],
+    "local_incident_conclusions_added": false
+  },
+  "provider_conflict_reconciliation": {
+    "repair_counts": {
+      "contradictions": 1,
+      "superseded_updates": 0,
+      "duplicate_clusters": 2,
+      "unverified_claims": 1
+    },
+    "initial_counts": {
+      "contradictions": 2,
+      "superseded_updates": 1,
+      "duplicate_clusters": 2,
+      "unverified_claims": 1
+    },
+    "merged_counts": {
+      "contradictions": 1,
+      "superseded_updates": 1,
+      "duplicate_clusters": 2,
+      "unverified_claims": 1
+    },
+    "carried_initial_provider_fields": [
+      "superseded_updates"
+    ],
+    "source_safety_issues": [],
+    "local_conflict_observations_added": false
+  },
+  "carried_fields": [
+    "situation_summary",
+    "source_report_count",
+    "superseded_updates"
+  ],
+  "carried_source_ids": [
+    "REPORT-001",
+    "REPORT-002",
+    "REPORT-003",
+    "REPORT-004",
+    "REPORT-005",
+    "REPORT-006",
+    "REPORT-007",
+    "REPORT-008",
+    "REPORT-009",
+    "REPORT-010",
+    "REPORT-011",
+    "REPORT-012",
+    "REPORT-013",
+    "REPORT-014",
+    "REPORT-015",
+    "REPORT-016",
+    "REPORT-017",
+    "REPORT-018",
+    "REPORT-019",
+    "REPORT-020"
+  ],
+  "repair_plan_count": 3,
+  "initial_plan_count": 5,
+  "merged_plan_count": 8,
+  "appended_initial_provider_actions": [
+    "Verify water supply",
+    "Assess bridge damage",
+    "Secure safe shelter",
+    "Provide medical care",
+    "Distribute dry food"
+  ],
+  "missing_core_fields": []
+}

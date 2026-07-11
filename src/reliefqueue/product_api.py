@@ -25,15 +25,19 @@ from .amd_quality import (
     build_cross_case_synthesis_prompt,
     build_dossier_reasoning_ledger,
     build_dossier_repair_prompt,
+    build_dossier_incident_supplement_prompt,
+    dossier_incident_supplement_required,
     build_model_metadata,
     build_workload_prompt,
     cross_case_semantic_issues,
     dossier_semantic_issues,
     enforce_context_budget,
     normalize_cross_case_synthesis,
+    normalize_dossier_incident_supplement,
     normalize_structured_output,
     parsed_preview,
     reconcile_provider_dossier_outputs,
+    reconcile_provider_incident_supplement,
     parse_burst_input,
     sanitize_text,
     synthesize_burst,
@@ -1322,6 +1326,10 @@ def _structured_workload_verification(
     repair_succeeded = False
     repair_reason: list[str] = []
     repair_evidence: dict[str, Any] | None = None
+    repair_rounds = 0
+    incident_supplement_attempted = False
+    incident_supplement_succeeded = False
+    incident_supplement_evidence: dict[str, Any] | None = None
 
     should_repair = (
         workload_mode == "complex_dossier"
@@ -1335,6 +1343,7 @@ def _structured_workload_verification(
     )
     if should_repair:
         repair_attempted = True
+        repair_rounds = 1
         repair_reason = list(initial_call["semantic_issues"])
         if initial_call["analysis_source"] == "local_safe_fallback":
             repair_reason.append("initial provider output was not valid structured JSON")
@@ -1401,6 +1410,167 @@ def _structured_workload_verification(
             and not repair_call["truncated"]
             and repair_call["semantic_complete"]
         )
+
+        if (
+            not repair_succeeded
+            and provider_reconciliation is not None
+            and dossier_incident_supplement_required(
+                repair_call["semantic_issues"],
+                provider_reconciliation,
+            )
+        ):
+            incident_supplement_attempted = True
+            repair_rounds = 2
+            supplement_nonce = os.urandom(8).hex()
+            supplement_messages = (
+                build_dossier_incident_supplement_prompt(
+                    sanitized,
+                    repair_call["structured"],
+                    repair_call["semantic_issues"],
+                    provider_reconciliation,
+                    supplement_nonce,
+                )
+            )
+            supplement_tokens = WORKLOAD_COMPLETION_BUDGETS[
+                "complex_dossier_incident_supplement"
+            ]
+            supplement_budget = enforce_context_budget(
+                supplement_messages[-1]["content"],
+                supplement_tokens,
+            )
+            supplement_result = adapter.complete_messages(
+                supplement_messages,
+                max_tokens=supplement_tokens,
+            )
+            supplement_transport_verified = bool(
+                supplement_result.get("verified_live")
+            ) and not bool(supplement_result.get("fallback_used"))
+            supplement_raw = str(
+                supplement_result.get("raw_content")
+                or supplement_result.get("generated_advisory")
+                or ""
+            )
+            (
+                supplement_record,
+                supplement_warnings,
+                supplement_source,
+            ) = normalize_dossier_incident_supplement(supplement_raw)
+            supplement_nonce_echoed = (
+                supplement_source in {"provider", "provider_incomplete"}
+                and str(supplement_record.get("challenge_nonce") or "")
+                == supplement_nonce
+            )
+            supplement_truncated = (
+                supplement_result.get("finish_reason") == "length"
+            )
+
+            supplement_reconciliation: dict[str, Any] | None = None
+            supplement_structured = repair_call["structured"]
+            supplement_issues = list(repair_call["semantic_issues"])
+            supplement_complete = False
+            if (
+                supplement_transport_verified
+                and supplement_source
+                in {"provider", "provider_incomplete"}
+                and supplement_nonce_echoed
+                and not supplement_truncated
+            ):
+                (
+                    supplement_structured,
+                    supplement_reconciliation,
+                ) = reconcile_provider_incident_supplement(
+                    repair_call["structured"],
+                    supplement_record,
+                    sanitized,
+                    provider_reconciliation,
+                )
+                supplement_issues = dossier_semantic_issues(
+                    supplement_structured,
+                    sanitized,
+                )
+                supplement_complete = (
+                    bool(
+                        supplement_reconciliation.get(
+                            "complete_source_partition"
+                        )
+                    )
+                    and not supplement_issues
+                )
+                supplement_source = (
+                    "provider"
+                    if supplement_complete
+                    else "provider_incomplete"
+                )
+                provider_reconciliation = dict(provider_reconciliation)
+                provider_reconciliation[
+                    "provider_incident_supplement"
+                ] = supplement_reconciliation
+
+            supplement_call = {
+                "transport_verified": supplement_transport_verified,
+                "structured": supplement_structured,
+                "warnings": list(supplement_warnings)
+                + [
+                    "A targeted AMD provider incident supplement was "
+                    "requested after the full repair left only an "
+                    "incident-count miss."
+                ],
+                "analysis_source": supplement_source,
+                "nonce": supplement_nonce,
+                "nonce_echoed": supplement_nonce_echoed,
+                "truncated": supplement_truncated,
+                "semantic_issues": supplement_issues,
+                "semantic_complete": supplement_complete,
+                "budget": supplement_budget,
+                "result": supplement_result,
+                "provider_reconciliation": provider_reconciliation,
+            }
+            calls.append(supplement_call)
+
+            incident_supplement_succeeded = (
+                supplement_call["transport_verified"]
+                and supplement_call["analysis_source"] == "provider"
+                and supplement_call["nonce_echoed"]
+                and not supplement_call["truncated"]
+                and supplement_call["semantic_complete"]
+            )
+            incident_supplement_evidence = {
+                "request_id": supplement_result.get("request_id"),
+                "challenge_nonce": supplement_nonce,
+                "verified_live": incident_supplement_succeeded,
+                "analysis_source": supplement_call["analysis_source"],
+                "nonce_echoed_by_provider": (
+                    supplement_call["nonce_echoed"]
+                ),
+                "semantic_completeness": (
+                    supplement_call["semantic_complete"]
+                ),
+                "semantic_issues": supplement_call["semantic_issues"],
+                "finish_reason": supplement_result.get("finish_reason"),
+                "latency_ms": supplement_result.get("latency_ms"),
+                "prompt_tokens": supplement_result.get("prompt_tokens"),
+                "completion_tokens": supplement_result.get(
+                    "completion_tokens"
+                ),
+                "total_tokens": supplement_result.get("total_tokens"),
+                "provider_incident_supplement": (
+                    supplement_reconciliation
+                ),
+            }
+            if supplement_call["analysis_source"] in {
+                "provider",
+                "provider_incomplete",
+            }:
+                repair_call = supplement_call
+
+            repair_succeeded = (
+                repair_call["transport_verified"]
+                and repair_call["analysis_source"] == "provider"
+                and repair_call["nonce_echoed"]
+                and not repair_call["truncated"]
+                and repair_call["semantic_complete"]
+            )
+
         repair_evidence = {
             "request_id": repair_result.get("request_id"),
             "challenge_nonce": repair_nonce,
@@ -1415,11 +1585,24 @@ def _structured_workload_verification(
             "completion_tokens": repair_result.get("completion_tokens"),
             "total_tokens": repair_result.get("total_tokens"),
             "provider_reconciliation": provider_reconciliation,
+            "repair_rounds": repair_rounds,
+            "incident_supplement_attempted": (
+                incident_supplement_attempted
+            ),
+            "incident_supplement_succeeded": (
+                incident_supplement_succeeded
+            ),
+            "incident_supplement_evidence": (
+                incident_supplement_evidence
+            ),
         }
-        # Prefer a provider JSON rewrite, even when it remains incomplete. If
-        # the repair call is malformed, retain the more useful initial provider
-        # output but keep the entire result unverified.
-        if repair_call["analysis_source"] in {"provider", "provider_incomplete"}:
+        # Prefer provider-authored repaired content, even when incomplete. A
+        # malformed targeted supplement never replaces the fuller reconciled
+        # provider dossier.
+        if repair_call["analysis_source"] in {
+            "provider",
+            "provider_incomplete",
+        }:
             selected = repair_call
 
     selected_result = dict(selected["result"])
@@ -1483,6 +1666,13 @@ def _structured_workload_verification(
             "semantic_issues": selected["semantic_issues"],
             "repair_attempted": repair_attempted,
             "repair_succeeded": repair_succeeded,
+            "repair_rounds": repair_rounds,
+            "incident_supplement_attempted": (
+                incident_supplement_attempted
+            ),
+            "incident_supplement_succeeded": (
+                incident_supplement_succeeded
+            ),
             "repair_reason": list(dict.fromkeys(repair_reason)),
             "repair_evidence": repair_evidence,
             "provider_reconciliation": selected.get("provider_reconciliation"),
@@ -1507,16 +1697,22 @@ def _structured_workload_verification(
         "single_completion_max_tokens": WORKLOAD_COMPLETION_BUDGETS["single"],
         "complex_dossier_completion_max_tokens": WORKLOAD_COMPLETION_BUDGETS["complex_dossier"],
         "complex_dossier_repair_max_tokens": WORKLOAD_COMPLETION_BUDGETS["complex_dossier_repair"],
+        "complex_dossier_incident_supplement_max_tokens": WORKLOAD_COMPLETION_BUDGETS[
+            "complex_dossier_incident_supplement"
+        ],
         "burst_case_completion_max_tokens": WORKLOAD_COMPLETION_BUDGETS["burst_case"],
         "cross_case_synthesis_completion_max_tokens": WORKLOAD_COMPLETION_BUDGETS["cross_case_synthesis"],
         "cross_case_synthesis_repair_max_tokens": WORKLOAD_COMPLETION_BUDGETS["cross_case_synthesis_repair"],
-        "selected_completion_max_tokens": (
-            WORKLOAD_COMPLETION_BUDGETS["complex_dossier_repair"]
-            if repair_attempted and selected is calls[-1]
-            else requested_tokens
+        "selected_completion_max_tokens": int(
+            selected.get("budget", {}).get(
+                "requested_completion_tokens",
+                requested_tokens,
+            )
         ),
         "silent_truncation_allowed": False,
-        "maximum_semantic_repair_calls": 1 if workload_mode == "complex_dossier" else 0,
+        "maximum_semantic_repair_calls": (
+            2 if workload_mode == "complex_dossier" else 0
+        ),
         "provider_response_reconciliation_enabled": workload_mode == "complex_dossier",
     }
     selected_result["model_metadata"] = _model_metadata(selected_result, verified_at=verified_at)
@@ -1525,9 +1721,16 @@ def _structured_workload_verification(
         + list(selected["warnings"])
     )
     if repair_attempted:
-        selected_result["warnings"].append(
-            "One bounded AMD semantic-repair pass was used because the first dossier response was incomplete."
-        )
+        if incident_supplement_attempted:
+            selected_result["warnings"].append(
+                "Two bounded AMD repair calls were used: one full dossier "
+                "rewrite and one targeted provider incident supplement."
+            )
+        else:
+            selected_result["warnings"].append(
+                "One bounded AMD semantic-repair pass was used because the "
+                "first dossier response was incomplete."
+            )
     if analysis_source == "local_safe_fallback":
         selected_result["warnings"].append(
             "Displayed structured analysis is local safe fallback, not AMD-generated analysis."

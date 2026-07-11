@@ -16,15 +16,19 @@ from reliefqueue.amd_quality import (
     build_cross_case_synthesis_prompt,
     build_dossier_reasoning_ledger,
     build_dossier_repair_prompt,
+    build_dossier_incident_supplement_prompt,
+    dossier_incident_supplement_required,
     build_model_metadata,
     build_workload_prompt,
     cross_case_semantic_issues,
     dossier_semantic_issues,
     enforce_context_budget,
     normalize_cross_case_synthesis,
+    normalize_dossier_incident_supplement,
     normalize_structured_output,
     parse_burst_input,
     reconcile_provider_dossier_outputs,
+    reconcile_provider_incident_supplement,
     sanitize_text,
 )
 from reliefqueue import product_api
@@ -1639,3 +1643,523 @@ class TestAmdDossierIncidentReconciliationPart7(unittest.TestCase):
 
 
 # END RELIEFQUEUE AMD DOSSIER INCIDENT RECONCILIATION PART 7 TESTS
+
+# BEGIN RELIEFQUEUE AMD DOSSIER CONFLICT-OBSERVATION RECONCILIATION PART 8B TESTS
+class TestAmdDossierConflictObservationReconciliationPart8B(
+    unittest.TestCase
+):
+    def _fixture(self) -> str:
+        return (
+            FIXTURES / "amd_quality_complex_dossier.txt"
+        ).read_text(encoding="utf-8")
+
+    def _normalized(self, file_name: str) -> dict:
+        source = self._fixture()
+        raw = (FIXTURES / file_name).read_text(encoding="utf-8")
+        record, _, _ = normalize_structured_output(
+            "complex_dossier",
+            raw,
+            source,
+            "JUDGE-DOSSIER",
+        )
+        return record
+
+    def test_source_safe_initial_conflict_observations_fill_empty_repair_sections(
+        self,
+    ) -> None:
+        source = self._fixture()
+        initial = self._normalized(
+            "amd_quality_dossier_part6_initial.json"
+        )
+        repair = self._normalized(
+            "amd_quality_dossier_part8_repair.json"
+        )
+
+        self.assertEqual(repair["contradictions"], [])
+        self.assertEqual(repair["superseded_updates"], [])
+        self.assertEqual(repair["duplicate_clusters"], [])
+        self.assertEqual(repair["unverified_claims"], [])
+
+        merged, evidence = reconcile_provider_dossier_outputs(
+            initial,
+            repair,
+            source_text=source,
+        )
+
+        self.assertEqual(dossier_semantic_issues(merged, source), [])
+        conflict = evidence["provider_conflict_reconciliation"]
+        self.assertEqual(
+            conflict["carried_initial_provider_fields"],
+            [
+                "contradictions",
+                "superseded_updates",
+                "duplicate_clusters",
+                "unverified_claims",
+            ],
+        )
+        self.assertEqual(conflict["source_safety_issues"], [])
+        self.assertFalse(conflict["local_conflict_observations_added"])
+        self.assertFalse(evidence["local_operational_conclusions_added"])
+
+    def test_nonempty_repair_conflict_section_remains_authoritative(
+        self,
+    ) -> None:
+        source = self._fixture()
+        initial = self._normalized(
+            "amd_quality_dossier_part6_initial.json"
+        )
+        repair = self._normalized(
+            "amd_quality_dossier_part8_repair.json"
+        )
+        repair_contradiction = {
+            "source_ids": ["REPORT-006", "REPORT-007"],
+            "conflict": "repair-authored bridge status",
+            "working_assumption": "damaged, not collapsed",
+        }
+        repair["contradictions"] = [repair_contradiction]
+
+        merged, evidence = reconcile_provider_dossier_outputs(
+            initial,
+            repair,
+            source_text=source,
+        )
+
+        self.assertEqual(
+            merged["contradictions"],
+            [repair_contradiction],
+        )
+        conflict = evidence["provider_conflict_reconciliation"]
+        self.assertNotIn(
+            "contradictions",
+            conflict["carried_initial_provider_fields"],
+        )
+
+    def test_source_unsafe_initial_conflict_sections_are_not_carried(
+        self,
+    ) -> None:
+        source = self._fixture()
+        initial = self._normalized(
+            "amd_quality_dossier_part6_initial.json"
+        )
+        repair = self._normalized(
+            "amd_quality_dossier_part8_repair.json"
+        )
+        initial["contradictions"] = []
+        initial["superseded_updates"] = []
+        initial["duplicate_clusters"] = []
+        initial["unverified_claims"] = []
+
+        merged, evidence = reconcile_provider_dossier_outputs(
+            initial,
+            repair,
+            source_text=source,
+        )
+
+        conflict = evidence["provider_conflict_reconciliation"]
+        self.assertTrue(conflict["source_safety_issues"])
+        self.assertEqual(
+            conflict["carried_initial_provider_fields"],
+            [],
+        )
+        self.assertEqual(merged["contradictions"], [])
+        self.assertEqual(merged["unverified_claims"], [])
+
+
+# END RELIEFQUEUE AMD DOSSIER CONFLICT-OBSERVATION RECONCILIATION PART 8B TESTS
+
+
+
+# BEGIN RELIEFQUEUE AMD DOSSIER TARGETED INCIDENT SUPPLEMENT PART 8C TESTS
+
+class TestAmdDossierTargetedIncidentSupplementPart8C(
+    unittest.TestCase
+):
+    def _source(self) -> str:
+        return (
+            FIXTURES / "amd_quality_complex_dossier.txt"
+        ).read_text(encoding="utf-8")
+
+    def _failed_reconciled(self) -> dict:
+        return json.loads(
+            (
+                FIXTURES
+                / "amd_quality_dossier_part8b_reconciled.json"
+            ).read_text(encoding="utf-8")
+        )
+
+    def _provider_reconciliation(self) -> dict:
+        return json.loads(
+            (
+                FIXTURES
+                / "amd_quality_dossier_part8b_reconciliation.json"
+            ).read_text(encoding="utf-8")
+        )
+
+    def _safe_supplement(self, nonce: str) -> dict:
+        return {
+            "schema_version": (
+                "reliefqueue-dossier-incident-supplement/v1"
+            ),
+            "workload_mode": (
+                "complex_dossier_incident_supplement"
+            ),
+            "challenge_nonce": nonce,
+            "corrected_incidents": [
+                {
+                    "incident_id": "INCIDENT-001",
+                    "source_ids": [
+                        "REPORT-001",
+                        "REPORT-003",
+                    ],
+                    "location": "Old Bus Stand",
+                    "needs": "drinking water",
+                    "people_range": "14 families",
+                    "vulnerable_groups": "children, elderly",
+                    "urgency_rationale": (
+                        "drinking water finished; east lane flooded"
+                    ),
+                    "missing_fields": (
+                        "verify household overlap and OCR count"
+                    ),
+                    "confidence": "medium",
+                },
+                {
+                    "incident_id": "INCIDENT-006",
+                    "source_ids": ["REPORT-002"],
+                    "location": (
+                        "North embankment lane behind bus stand"
+                    ),
+                    "needs": "flood evacuation review",
+                    "people_range": "18 people",
+                    "vulnerable_groups": (
+                        "3 elderly, teenager, pregnant person"
+                    ),
+                    "urgency_rationale": (
+                        "home flooding near north embankment"
+                    ),
+                    "missing_fields": (
+                        "exact lane and water depth"
+                    ),
+                    "confidence": "medium",
+                },
+            ],
+            "human_review_required": True,
+        }
+
+    def test_exact_part8b_failure_accepts_source_safe_provider_partition(
+        self,
+    ) -> None:
+        source = self._source()
+        current = self._failed_reconciled()
+        reconciliation = self._provider_reconciliation()
+        supplement = self._safe_supplement("nonce-part8c")
+
+        merged, evidence = reconcile_provider_incident_supplement(
+            current,
+            supplement,
+            source,
+            reconciliation,
+        )
+
+        self.assertEqual(dossier_semantic_issues(merged, source), [])
+        self.assertEqual(
+            len(merged["consolidated_incidents"]),
+            6,
+        )
+        self.assertTrue(evidence["complete_source_partition"])
+        self.assertEqual(
+            evidence["covered_allowed_source_ids"],
+            ["REPORT-001", "REPORT-002", "REPORT-003"],
+        )
+        self.assertEqual(evidence["rejected_provider_incidents"], [])
+        self.assertFalse(evidence["local_incident_conclusions_added"])
+
+        links = {
+            row["source_id"]: row["linked_incident_id"]
+            for row in merged["source_coverage"]
+            if row["source_id"] in {
+                "REPORT-001",
+                "REPORT-002",
+                "REPORT-003",
+            }
+        }
+        self.assertEqual(
+            links,
+            {
+                "REPORT-001": "INCIDENT-001",
+                "REPORT-002": "INCIDENT-006",
+                "REPORT-003": "INCIDENT-001",
+            },
+        )
+
+    def test_cross_location_provider_remerge_is_rejected(
+        self,
+    ) -> None:
+        source = self._source()
+        current = self._failed_reconciled()
+        reconciliation = self._provider_reconciliation()
+        supplement = self._safe_supplement("nonce-part8c")
+        supplement["corrected_incidents"] = [
+            {
+                "incident_id": "INCIDENT-001",
+                "source_ids": [
+                    "REPORT-001",
+                    "REPORT-002",
+                    "REPORT-003",
+                ],
+                "location": "Old Bus Stand",
+                "needs": "water and evacuation",
+                "people_range": "18",
+                "vulnerable_groups": "pregnant, elderly",
+                "urgency_rationale": "flooding",
+                "missing_fields": "verify",
+                "confidence": "low",
+            }
+        ]
+
+        merged, evidence = reconcile_provider_incident_supplement(
+            current,
+            supplement,
+            source,
+            reconciliation,
+        )
+
+        self.assertEqual(
+            len(merged["consolidated_incidents"]),
+            4,
+        )
+        self.assertFalse(evidence["complete_source_partition"])
+        self.assertTrue(evidence["rejected_provider_incidents"])
+        self.assertIn(
+            "consolidated_incidents requires at least 5",
+            " | ".join(dossier_semantic_issues(merged, source)),
+        )
+
+    def test_targeted_prompt_is_bounded_and_source_specific(
+        self,
+    ) -> None:
+        source = self._source()
+        current = self._failed_reconciled()
+        reconciliation = self._provider_reconciliation()
+        issues = [
+            "consolidated_incidents requires at least 5 items, got 4"
+        ]
+
+        self.assertTrue(
+            dossier_incident_supplement_required(
+                issues,
+                reconciliation,
+            )
+        )
+        prompt = build_dossier_incident_supplement_prompt(
+            source,
+            current,
+            issues,
+            reconciliation,
+            "nonce-part8c",
+        )
+        payload = json.loads(prompt[-1]["content"])
+        budget = enforce_context_budget(
+            prompt[-1]["content"],
+            WORKLOAD_COMPLETION_BUDGETS[
+                "complex_dossier_incident_supplement"
+            ],
+        )
+
+        self.assertEqual(
+            payload["allowed_source_ids"],
+            ["REPORT-001", "REPORT-002", "REPORT-003"],
+        )
+        self.assertEqual(
+            [
+                row["source_id"]
+                for row in payload["source_reports"]
+            ],
+            [
+                "REPORT-001",
+                "REPORT-002",
+                "REPORT-003",
+                "REPORT-004",
+            ],
+        )
+        self.assertEqual(
+            payload["explicit_duplicate_pairs"],
+            [["REPORT-001", "REPORT-003"]],
+        )
+        self.assertEqual(
+            payload["forbidden_location_merges"],
+            [["REPORT-001", "REPORT-002"]],
+        )
+        self.assertGreaterEqual(
+            ACTIVE_CONTEXT_LIMIT
+            - budget["estimated_total_tokens"],
+            300,
+        )
+        self.assertFalse(
+            dossier_incident_supplement_required(
+                [
+                    "calculation_checks missing source-linked row "
+                    "for safe-capacity overflow"
+                ],
+                reconciliation,
+            )
+        )
+
+    def test_normalizer_preserves_provider_incidents_and_nonce(
+        self,
+    ) -> None:
+        raw = json.dumps(
+            self._safe_supplement("nonce-part8c")
+        )
+        record, warnings, source = (
+            normalize_dossier_incident_supplement(raw)
+        )
+        self.assertEqual(source, "provider")
+        self.assertEqual(
+            record["challenge_nonce"],
+            "nonce-part8c",
+        )
+        self.assertEqual(
+            len(record["corrected_incidents"]),
+            2,
+        )
+        self.assertEqual(warnings, [])
+
+    def test_product_boundary_uses_at_most_two_repairs(
+        self,
+    ) -> None:
+        source = self._source()
+        current = self._failed_reconciled()
+        repair = json.loads(
+            (
+                FIXTURES
+                / "amd_quality_dossier_part8b_repair.json"
+            ).read_text(encoding="utf-8")
+        )
+        initial = json.loads(json.dumps(current))
+        initial["consolidated_incidents"] = [
+            json.loads(
+                json.dumps(repair["consolidated_incidents"][0])
+            ),
+            *json.loads(
+                json.dumps(current["consolidated_incidents"])
+            ),
+        ]
+        owner = self
+
+        class IncidentSupplementAdapter:
+            def __init__(self) -> None:
+                self.calls: list[dict[str, object]] = []
+
+            def complete_messages(
+                self,
+                messages,
+                *,
+                max_tokens,
+                response_format="json_object",
+            ):
+                payload = json.loads(messages[-1]["content"])
+                mode = (
+                    payload.get("workload_mode")
+                    or payload.get("output_contract", {}).get(
+                        "workload_mode"
+                    )
+                )
+                nonce = payload["challenge_nonce"]
+                self.calls.append(
+                    {
+                        "mode": mode,
+                        "nonce": nonce,
+                        "max_tokens": max_tokens,
+                    }
+                )
+                if mode == "complex_dossier":
+                    output = json.loads(json.dumps(initial))
+                elif mode == "complex_dossier_repair":
+                    output = json.loads(json.dumps(repair))
+                elif (
+                    mode
+                    == "complex_dossier_incident_supplement"
+                ):
+                    output = owner._safe_supplement(nonce)
+                else:
+                    raise AssertionError(mode)
+                output["challenge_nonce"] = nonce
+                content = json.dumps(output)
+                return {
+                    "status": "ok",
+                    "verified_live": True,
+                    "fallback_used": False,
+                    "provider": "AMD Developer Cloud",
+                    "runtime": "vLLM",
+                    "accelerator": "AMD Instinct MI300X",
+                    "served_model": "reliefqueue-amd",
+                    "underlying_model": None,
+                    "request_id": f"req-{len(self.calls)}",
+                    "latency_ms": 5,
+                    "prompt_tokens": 10,
+                    "completion_tokens": 20,
+                    "total_tokens": 30,
+                    "raw_content": content,
+                    "generated_advisory": content,
+                    "warnings": [],
+                    "error": None,
+                    "finish_reason": "stop",
+                    "request_settings": {
+                        "max_tokens": max_tokens
+                    },
+                }
+
+        adapter = IncidentSupplementAdapter()
+        result = product_api._structured_workload_verification(
+            adapter,
+            source,
+            "complex_dossier",
+            "JUDGE-DOSSIER",
+        )
+
+        self.assertEqual(
+            [call["mode"] for call in adapter.calls],
+            [
+                "complex_dossier",
+                "complex_dossier_repair",
+                "complex_dossier_incident_supplement",
+            ],
+        )
+        self.assertEqual(result["provider_call_count"], 3)
+        self.assertEqual(result["repair_rounds"], 2)
+        self.assertTrue(result["incident_supplement_attempted"])
+        self.assertTrue(result["incident_supplement_succeeded"])
+        self.assertTrue(result["repair_succeeded"])
+        self.assertTrue(result["verified_live"])
+        self.assertEqual(result["analysis_source"], "provider")
+        self.assertEqual(result["semantic_issues"], [])
+        self.assertEqual(
+            result["request_settings"][
+                "maximum_semantic_repair_calls"
+            ],
+            2,
+        )
+        self.assertEqual(
+            result["request_settings"][
+                "selected_completion_max_tokens"
+            ],
+            WORKLOAD_COMPLETION_BUDGETS[
+                "complex_dossier_incident_supplement"
+            ],
+        )
+        self.assertEqual(result["provider_total_tokens"], 90)
+        supplement_evidence = result["repair_evidence"][
+            "incident_supplement_evidence"
+        ]["provider_incident_supplement"]
+        self.assertTrue(
+            supplement_evidence["complete_source_partition"]
+        )
+        self.assertFalse(
+            supplement_evidence[
+                "local_incident_conclusions_added"
+            ]
+        )
+
+
+# END RELIEFQUEUE AMD DOSSIER TARGETED INCIDENT SUPPLEMENT PART 8C TESTS
