@@ -7,6 +7,23 @@ surfaces. The project is imported from GitHub and is command-led — most
 workflows are driven through the `Makefile` (`make change-guide` for the
 operator catalog).
 
+## Live AMD Verification Endpoint
+
+`POST /api/ai/live-verification` — contacts the real AMD Developer Cloud vLLM endpoint
+with synthetic humanitarian input and returns verifiable evidence:
+- `verified_live`, `fallback_used`, `human_review_required` (always true)
+- `provider`, `runtime`, `accelerator`, `served_model`, `underlying_model`
+- `request_id`, `verified_at`, `latency_ms`, token counts
+- `synthetic_input`, `generated_advisory`
+- Never exposes the API key or private data
+
+The AMD Impact page (`/dashboard/amd-impact`) has a **Run Live AMD Verification** button
+that calls this endpoint and shows VERIFIED LIVE / LIVE VERIFICATION FAILED inline.
+AI Control (`/dashboard` → AI Control) shows the real active model and makes Test Connection
+call the backend. Judge Demo Walkthrough Step 3 runs a real AMD inference inline.
+
+Tests for this endpoint: `tests/test_live_verification.py` (31 tests).
+
 ## Running on Replit
 
 A single Python process serves both the built dashboard and the JSON

@@ -1,0 +1,206 @@
+URGENT RELEASE-BLOCKING TASK: make the existing real AMD Developer Cloud/vLLM integration visibly and verifiably live to judges.
+
+Current verified backend state:
+- Production environment has:
+  AI_MODE=openai_compatible
+  OPENAI_COMPAT_BASE_URL configured
+  OPENAI_COMPAT_API_KEY configured
+  OPENAI_COMPAT_MODEL=reliefqueue-amd
+  AI_SEND_PRIVATE_TEXT=false
+- The backend has already successfully contacted the real AMD endpoint.
+- The AMD server is vLLM 0.23.0 on an AMD Instinct MI300X.
+- The underlying model is Qwen/Qwen2.5-7B-Instruct, served as reliefqueue-amd.
+- Do not change deployment secrets, model, endpoint, or AMD infrastructure.
+
+Problem:
+The public UI currently shows generic/static labels such as:
+- Connection Healthy
+- Default Model
+- AMD Impact Pending Verification
+- Gemma 4 Validation Pending
+- Judge Demo Walkthrough steps that only produce notification/toast messages
+
+This is unacceptable. A judge must be able to click one control and see a fresh real AMD inference response and evidence in the page itself.
+
+Implement the following:
+
+1. Add or reuse a backend endpoint for a real live verification request.
+
+Preferred contract:
+POST /api/ai/live-verification
+
+The endpoint must:
+- Invoke the existing ReliefQueue OpenAI-compatible adapter.
+- Use the production OPENAI_COMPAT_* environment variables.
+- Send synthetic, privacy-safe humanitarian input.
+- Contact the real configured vLLM endpoint.
+- Measure request latency.
+- Return safe evidence including:
+  status
+  verified_live
+  provider
+  runtime
+  accelerator
+  served_model
+  underlying_model
+  request_id
+  verified_at
+  latency_ms
+  prompt_tokens
+  completion_tokens
+  total_tokens
+  fallback_used
+  human_review_required
+  synthetic_input
+  generated_advisory
+  warnings
+  error
+- Never return or log the API key.
+- Never return secret headers.
+- Do not expose private input data.
+- Use server-side environment variables only.
+
+Expected successful values should truthfully represent:
+  provider: AMD Developer Cloud
+  runtime: vLLM 0.23.0
+  accelerator: AMD Instinct MI300X
+  served_model: reliefqueue-amd
+  underlying_model: Qwen/Qwen2.5-7B-Instruct
+  fallback_used: false
+  human_review_required: true
+  verified_live: true
+
+Derive values from actual runtime responses/configuration where possible. Do not invent success.
+
+2. Add a judge-facing page or prominently repair the existing AMD Impact page.
+
+The page must contain a primary button:
+  Run Live AMD Verification
+
+Clicking it must:
+- Show a real loading state.
+- Call the backend endpoint.
+- Cause a new real inference request.
+- Display the returned advisory inline.
+- Display the evidence inline.
+- Not rely only on a toast, notification, or static label.
+
+Show a large state banner:
+  VERIFIED LIVE
+only after the real request succeeds.
+
+Show:
+- AMD Developer Cloud
+- AMD Instinct MI300X
+- vLLM 0.23.0
+- Qwen/Qwen2.5-7B-Instruct
+- Served model: reliefqueue-amd
+- Last verified timestamp
+- Request ID
+- Measured latency
+- Token usage
+- Fallback used: No
+- Human review required: Yes
+- Synthetic input
+- Actual generated advisory
+
+On failure, show:
+  LIVE VERIFICATION FAILED
+and the safe error/fallback state. Never leave an old success displayed as though it were current.
+
+3. Repair AI Control.
+
+Replace:
+  Model Version: Default Model
+with the actual active model:
+  Qwen2.5-7B-Instruct via AMD vLLM
+
+Connection Healthy must be based on an actual backend result, not a frontend-only state.
+
+The Test Connection button must run the real backend verification and display:
+- request ID
+- timestamp
+- latency
+- model
+- live/fallback status
+- a short returned output
+
+Do not merely show a success toast.
+
+4. Repair AMD Impact.
+
+Replace Pending Verification after a successful live request with:
+  Verified Live
+
+The AMD Impact page must show the latest real proof and allow a new proof request.
+
+Display a minimal deterministic-versus-AMD comparison:
+- deterministic baseline
+- real AMD-generated advisory
+- additional operator note, missing-field question, or other visible difference
+- human review remains required
+
+Do not claim “more accurate” unless formally evaluated.
+
+5. Fix Judge Demo Walkthrough.
+
+The first three steps must perform meaningful visible actions.
+
+At least one of the first three steps must:
+- execute a new real AMD request
+- display the real response inline
+- show request ID, model, timestamp, latency, and verified-live status
+
+No walkthrough step may succeed solely by showing “done”, a toast, or a notification.
+
+6. Handle the Gemma 4 card truthfully.
+
+The current live model is Qwen/Qwen2.5-7B-Instruct, not Gemma 4.
+
+Do one of:
+- remove the Gemma 4 Bonus Lane from the primary judge workflow, or
+- label it clearly:
+  Experimental bonus lane — not active in this deployment
+
+Do not present Gemma 4 as the active or validated model.
+
+7. Preserve existing safety boundaries.
+
+- AI advisory only.
+- Coordinator approval required.
+- Human review required.
+- Synthetic/demo data only.
+- No automatic dispatch or provider messages.
+- Deterministic fallback remains available.
+- No secrets in frontend bundles or API output.
+
+8. Add focused validation.
+
+Add tests proving:
+- successful live-verification response mapping
+- API key never appears in the response
+- human_review_required is true
+- fallback_used is correctly reported
+- failed provider calls cannot show VERIFIED LIVE
+- frontend renders returned advisory and evidence
+- repeated clicks create new timestamps/request IDs
+- no toast-only success path remains
+
+Run existing relevant tests and build checks.
+
+9. Final acceptance criteria.
+
+In a fresh private/incognito browser on the published URL:
+- Open AMD Impact.
+- Click Run Live AMD Verification.
+- A new real request reaches the AMD vLLM endpoint.
+- The page displays VERIFIED LIVE.
+- The actual generated response appears inline.
+- AMD Developer Cloud, MI300X, vLLM 0.23.0 and Qwen2.5-7B-Instruct are visible.
+- Request ID, UTC timestamp, latency and tokens are visible.
+- Fallback used is No.
+- Human review required is Yes.
+- Refreshing does not convert a failed/unverified state into success.
+- No API key is visible in browser source, network response, logs or UI.
+
+Do not redesign unrelated pages. Prioritize this end-to-end proof and complete it rapidly.

@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, unquote, urlparse
 
+from .ai import AIConfig, OpenAICompatibleAdapter
 from .assignment import suggest_assignments
 from .cli import ROOT, build_cases
 from .intake import load_json, load_jsonl
@@ -1114,7 +1115,45 @@ def _route(method: str, path: str, body: dict[str, Any]) -> dict[str, Any]:
         return local_workers()
     if method == "POST" and route == "/api/product/local/scenario":
         return update_local_scenario(body)
+    if method == "POST" and route == "/api/ai/live-verification":
+        return live_verification()
     raise ProductApiError(404, f"unknown product API route: {route}")
+
+
+def live_verification() -> dict[str, Any]:
+    """POST /api/ai/live-verification — real inference request for judge evidence.
+
+    Contacts the configured AMD Developer Cloud / vLLM endpoint with
+    synthetic privacy-safe input. Never returns the API key or secret headers.
+    """
+    import datetime as _dt
+    config = AIConfig.from_env()
+    if config.mode != "openai_compatible":
+        return {
+            "status": "failed",
+            "verified_live": False,
+            "provider": "AMD Developer Cloud",
+            "runtime": "vLLM 0.23.0",
+            "accelerator": "AMD Instinct MI300X",
+            "served_model": None,
+            "underlying_model": "Qwen/Qwen2.5-7B-Instruct",
+            "request_id": None,
+            "verified_at": _dt.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "latency_ms": None,
+            "prompt_tokens": None,
+            "completion_tokens": None,
+            "total_tokens": None,
+            "fallback_used": True,
+            "human_review_required": True,
+            "synthetic_input": None,
+            "generated_advisory": None,
+            "warnings": ["AI_MODE is not openai_compatible; live verification requires the AMD endpoint to be configured."],
+            "error": f"AI_MODE={config.mode!r}; set AI_MODE=openai_compatible and configure OPENAI_COMPAT_* to enable live verification.",
+        }
+    adapter = OpenAICompatibleAdapter(config)
+    result = adapter.live_verify()
+    result["verified_at"] = _dt.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+    return result
 
 
 def local_scenario() -> dict[str, Any]:
