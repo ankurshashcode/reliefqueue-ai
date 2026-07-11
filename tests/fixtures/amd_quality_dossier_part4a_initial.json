@@ -1,0 +1,90 @@
+{
+  "schema_version": "reliefqueue-dossier-analysis/v2",
+  "workload_mode": "complex_dossier",
+  "challenge_nonce": "6f26c2da163e187b",
+  "situation_summary": "Flooding, bridge collapse, water shortage, medical needs.",
+  "source_report_count": 20,
+  "source_coverage": [
+    {"source_id": "REPORT-001", "disposition": "incident", "linked_incident_id": "INCIDENT-001"},
+    {"source_id": "REPORT-002", "disposition": "incident", "linked_incident_id": "INCIDENT-001"},
+    {"source_id": "REPORT-003", "disposition": "duplicate", "linked_incident_id": "INCIDENT-001"},
+    {"source_id": "REPORT-004", "disposition": "coordinator_note", "linked_incident_id": null},
+    {"source_id": "REPORT-005", "disposition": "incident", "linked_incident_id": "INCIDENT-002"},
+    {"source_id": "REPORT-006", "disposition": "contradiction", "linked_incident_id": "INCIDENT-003"},
+    {"source_id": "REPORT-007", "disposition": "resolution", "linked_incident_id": "INCIDENT-003"},
+    {"source_id": "REPORT-008", "disposition": "incident", "linked_incident_id": "INCIDENT-004"},
+    {"source_id": "REPORT-009", "disposition": "incident", "linked_incident_id": "INCIDENT-005"},
+    {"source_id": "REPORT-010", "disposition": "route_constraint", "linked_incident_id": null},
+    {"source_id": "REPORT-011", "disposition": "incident", "linked_incident_id": "INCIDENT-006"},
+    {"source_id": "REPORT-012", "disposition": "route_constraint", "linked_incident_id": null},
+    {"source_id": "REPORT-013", "disposition": "incident", "linked_incident_id": "INCIDENT-007"},
+    {"source_id": "REPORT-014", "disposition": "duplicate", "linked_incident_id": "INCIDENT-007"},
+    {"source_id": "REPORT-015", "disposition": "incident", "linked_incident_id": "INCIDENT-008"},
+    {"source_id": "REPORT-016", "disposition": "resource", "linked_incident_id": null},
+    {"source_id": "REPORT-017", "disposition": "coordinator_note", "linked_incident_id": null},
+    {"source_id": "REPORT-018", "disposition": "resource", "linked_incident_id": null},
+    {"source_id": "REPORT-019", "disposition": "route_constraint", "linked_incident_id": null},
+    {"source_id": "REPORT-020", "disposition": "incident", "linked_incident_id": "INCIDENT-009"}
+  ],
+  "uncovered_source_ids": [],
+  "source_evidence_index": [
+    {"source_id": "REPORT-001", "terms": ["families", "drinking water"], "numbers": ["14", "08:30"]},
+    {"source_id": "REPORT-002", "terms": ["elderly", "north embankment"], "numbers": ["18", "3"]},
+    {"source_id": "REPORT-003", "terms": ["bridge", "closed"], "numbers": ["1B", "3 old ppl"]},
+    {"source_id": "REPORT-006", "terms": ["bridge", "collapsed"], "numbers": ["200"]},
+    {"source_id": "REPORT-007", "terms": ["bridge", "damaged"], "numbers": []},
+    {"source_id": "REPORT-008", "terms": ["capacity", "registered"], "numbers": ["80", "67"]},
+    {"source_id": "REPORT-009", "terms": ["capacity"], "numbers": ["45", "41", "12"]},
+    {"source_id": "REPORT-010", "terms": ["insulin", "small van", "truck"], "numbers": ["36", "18", "4"]},
+    {"source_id": "REPORT-011", "terms": ["insulin"], "numbers": ["19", "12", "2"]},
+    {"source_id": "REPORT-012", "terms": ["road", "blocked", "small van"], "numbers": []},
+    {"source_id": "REPORT-013", "terms": ["boat"], "numbers": ["6"]},
+    {"source_id": "REPORT-014", "terms": ["boat"], "numbers": []},
+    {"source_id": "REPORT-015", "terms": ["pregnant", "chest pain"], "numbers": []},
+    {"source_id": "REPORT-016", "terms": ["wheelchair", "oxygen"], "numbers": []},
+    {"source_id": "REPORT-018", "terms": ["water purification", "food"], "numbers": ["60", "120"]},
+    {"source_id": "REPORT-019", "terms": ["transformer"], "numbers": ["50"]},
+    {"source_id": "REPORT-020", "terms": ["capacity", "registered"], "numbers": ["80", "43", "67"]}
+  ],
+  "consolidated_incidents": [
+    {"incident_id": "INCIDENT-001", "source_ids": ["REPORT-001", "REPORT-002", "REPORT-003"], "location": "Old Bus Stand", "needs": "drinking water, families", "people_range": "14-18", "vulnerable_groups": "children, elderly", "urgency_rationale": "water shortage, flooding", "missing_fields": "flood extent, exact location", "confidence": "medium"},
+    {"incident_id": "INCIDENT-002", "source_ids": ["REPORT-005"], "location": "Old Bus Stand", "needs": "medical care, pregnant woman", "people_range": "1", "vulnerable_groups": "pregnant woman", "urgency_rationale": "chest pain, medication needed", "missing_fields": "exact location, condition severity", "confidence": "low"},
+    {"incident_id": "INCIDENT-003", "source_ids": ["REPORT-006", "REPORT-007"], "location": "Main Bridge", "needs": "rescue, evacuation", "people_range": "200", "vulnerable_groups": "none", "urgency_rationale": "bridge collapse, trapped", "missing_fields": "exact location, rescue resources", "confidence": "low"},
+    {"incident_id": "INCIDENT-004", "source_ids": ["REPORT-008"], "location": "Community Hall", "needs": "shelter, registration", "people_range": "80", "vulnerable_groups": "none", "urgency_rationale": "capacity exceeded", "missing_fields": "exact location, status", "confidence": "medium"},
+    {"incident_id": "INCIDENT-005", "source_ids": ["REPORT-009"], "location": "School Shelter", "needs": "shelter, registration", "people_range": "45", "vulnerable_groups": "none", "urgency_rationale": "capacity exceeded", "missing_fields": "exact location, status", "confidence": "medium"}
+  ],
+  "duplicate_clusters": [
+    {"source_ids": ["REPORT-001", "REPORT-003"], "reason": "same households, different landmarks"},
+    {"source_ids": ["REPORT-013", "REPORT-014"], "reason": "same group, different counts"}
+  ],
+  "contradictions": [
+    {"source_ids": ["REPORT-004", "REPORT-007"], "conflict": "bridge status", "working_assumption": "damaged, not collapsed"},
+    {"source_ids": ["REPORT-010", "REPORT-012"], "conflict": "road status", "working_assumption": "blocked, open to small vans"}
+  ],
+  "superseded_updates": [
+    {"older_source_id": "REPORT-006", "newer_source_id": "REPORT-007", "change": "bridge status"}
+  ],
+  "unverified_claims": [
+    {"source_ids": ["REPORT-006"], "claim": "200 people trapped", "verification_needed": "photo, source"}
+  ],
+  "people_count_ranges": ["14-18", "19-21", "41-45"],
+  "resource_gaps": ["water packs: 14", "ORS sachets: 7", "tarpaulins: 12", "insulin doses: 5", "oxygen cylinders: 1", "wheelchairs: 1", "small vans: 1", "high-clearance truck: 1"],
+  "capacity_pressure": ["Community Hall: 24 overflow", "School Shelter: 4 overflow"],
+  "calculation_checks": [
+    {"label": "effective shelter capacity", "source_ids": ["REPORT-009"], "inputs": ["45", "41", "12"], "formula": "45 - 12 = 33; 41 - 33", "result": "8"},
+    {"label": "insulin dose shortfall", "source_ids": ["REPORT-011"], "inputs": ["19", "12", "2"], "formula": "19 - 12; (19 - 2) - 12", "result": {"before_reconciliation": "7", "if_all_possible_duplicates_confirmed": "5"}}
+  ],
+  "route_constraints": ["North road blocked", "South lane open to small vans"],
+  "cross_incident_dependencies": ["Main Bridge status affects rescue efforts"],
+  "do_not_merge_notes": ["Do not merge reports from different locations sharing landmarks or needs"],
+  "prioritized_operational_plan": [
+    {"rank": 1, "action": "Verify water supply", "reason": "critical for survival", "dependency": "no flooding", "verify_before_action": "ground truth"},
+    {"rank": 2, "action": "Evacuate bridge area", "reason": "risk of collapse", "dependency": "rescue boats available", "verify_before_action": "bridge stability"},
+    {"rank": 3, "action": "Register displaced persons", "reason": "track needs", "dependency": "shelters operational", "verify_before_action": "shelter capacity"}
+  ],
+  "missing_information_questions": ["Exact location of bridge collapse", "Status of transformer zone", "Condition of trapped individuals"],
+  "coordinator_review_gates": ["Verify all critical needs before action", "Ensure accurate location data"],
+  "confidence_notes": ["Some reports lack verification, confidence medium-low"],
+  "warnings": ["Unverified claims require validation", "Resource gaps need confirmation"],
+  "human_review_required": true
+}

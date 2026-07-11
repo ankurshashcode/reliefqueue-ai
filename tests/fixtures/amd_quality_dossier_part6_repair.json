@@ -1,0 +1,94 @@
+{
+  "schema_version": "reliefqueue-dossier-analysis/v2",
+  "workload_mode": "complex_dossier",
+  "challenge_nonce": "3179cef6a0bea03b",
+  "output_contract": {
+    "source_report_count": 20,
+    "source_coverage": [
+      {"source_id": "REPORT-001", "disposition": "incident", "linked_incident_id": null},
+      {"source_id": "REPORT-002", "disposition": "incident", "linked_incident_id": null},
+      {"source_id": "REPORT-003", "disposition": "incident", "linked_incident_id": null},
+      {"source_id": "REPORT-004", "disposition": "duplicate", "linked_incident_id": null},
+      {"source_id": "REPORT-005", "disposition": "incident", "linked_incident_id": null},
+      {"source_id": "REPORT-006", "disposition": "unverified", "linked_incident_id": null},
+      {"source_id": "REPORT-007", "disposition": "contradiction", "linked_incident_id": "REPORT-006"},
+      {"source_id": "REPORT-008", "disposition": "incident", "linked_incident_id": null},
+      {"source_id": "REPORT-009", "disposition": "incident", "linked_incident_id": null},
+      {"source_id": "REPORT-010", "disposition": "incident", "linked_incident_id": null},
+      {"source_id": "REPORT-011", "disposition": "incident", "linked_incident_id": null},
+      {"source_id": "REPORT-012", "disposition": "incident", "linked_incident_id": null},
+      {"source_id": "REPORT-013", "disposition": "incident", "linked_incident_id": null},
+      {"source_id": "REPORT-014", "disposition": "incident", "linked_incident_id": null},
+      {"source_id": "REPORT-015", "disposition": "incident", "linked_incident_id": null},
+      {"source_id": "REPORT-016", "disposition": "incident", "linked_incident_id": null},
+      {"source_id": "REPORT-017", "disposition": "coordinator_note", "linked_incident_id": null},
+      {"source_id": "REPORT-018", "disposition": "incident", "linked_incident_id": null},
+      {"source_id": "REPORT-019", "disposition": "incident", "linked_incident_id": null},
+      {"source_id": "REPORT-020", "disposition": "incident", "linked_incident_id": null}
+    ],
+    "uncovered_source_ids": [],
+    "source_evidence_index": [
+      {"source_id": "REPORT-001", "terms": ["families", "drinking water"], "numbers": ["14", "08:30"]},
+      {"source_id": "REPORT-002", "terms": ["log", "elderly", "embankment", "ghar", "dub", "teenager", "pregnant"], "numbers": ["18", "3"]},
+      {"source_id": "REPORT-003", "terms": ["OLB BUS STN", "famly", "watr nil", "old ppl", "brdge rd closd"], "numbers": []},
+      {"source_id": "REPORT-006", "terms": ["bridge", "collapsed"], "numbers": ["200"]},
+      {"source_id": "REPORT-007", "terms": ["bridge", "damaged", "pedestrian lane"], "numbers": []},
+      {"source_id": "REPORT-008", "terms": ["capacity", "registered"], "numbers": ["80", "67"]},
+      {"source_id": "REPORT-009", "terms": ["capacity"], "numbers": ["45", "41", "12"]},
+      {"source_id": "REPORT-010", "terms": ["water packs", "ORS sachets", "tarpaulins", "insulin", "small van", "truck"], "numbers": ["36", "18", "4"]},
+      {"source_id": "REPORT-011", "terms": ["insulin", "patients", "doses"], "numbers": ["19", "12", "2"]},
+      {"source_id": "REPORT-012", "terms": ["road", "blocked", "motorcycles", "small vans", "high-clearance truck"], "numbers": []},
+      {"source_id": "REPORT-013", "terms": ["log", "bank", "paani", "dadi", "boat"], "numbers": ["6"]},
+      {"source_id": "REPORT-014", "terms": ["log", "terrace", "Old Pump House", "boat"], "numbers": []},
+      {"source_id": "REPORT-015", "terms": ["pregnant", "chest pain", "textile", "gate"], "numbers": []},
+      {"source_id": "REPORT-016", "terms": ["wheelchair", "oxygen", "small van"], "numbers": []},
+      {"source_id": "REPORT-018", "terms": ["dry food", "small van"], "numbers": ["60", "120"]},
+      {"source_id": "REPORT-019", "terms": ["transformer", "utility isolation"], "numbers": ["50"]},
+      {"source_id": "REPORT-020", "terms": ["capacity", "registered", "safe capacity"], "numbers": ["80", "43", "67"]}
+    ],
+    "consolidated_incidents": [
+      {"incident_id": "INCIDENT-001", "source_ids": ["REPORT-001", "REPORT-003"], "location": "Old Bus Stand", "needs": "drinking water, food, medical care", "people_range": "14 families; unverified 200-person claim", "vulnerable_groups": "children, elderly", "urgency_rationale": "water shortage, flooding", "missing_fields": "location details, exact people count", "confidence": "medium"},
+      {"incident_id": "INCIDENT-002", "source_ids": ["REPORT-002", "REPORT-013", "REPORT-014"], "location": "Old Pump House", "needs": "rescue, medical care", "people_range": "6 people; unverified 200-person claim", "vulnerable_groups": "pregnant, elderly, children", "urgency_rationale": "flooded area, rescue needed", "missing_fields": "exact people count, location details", "confidence": "low"}
+    ],
+    "duplicate_clusters": [
+      {"source_ids": ["REPORT-001", "REPORT-003"], "reason": "same households"},
+      {"source_ids": ["REPORT-013", "REPORT-014"], "reason": "same group, different counts"}
+    ],
+    "contradictions": [
+      {"source_ids": ["REPORT-006", "REPORT-007"], "conflict": "collapsed vs damaged", "working_assumption": "damage, not collapse"}
+    ],
+    "superseded_updates": [
+      {"older_source_id": "REPORT-006", "newer_source_id": "REPORT-007", "change": "collapsed -> damaged"}
+    ],
+    "unverified_claims": [
+      {"source_ids": ["REPORT-006"], "claim": "200 people trapped", "verification_needed": "photo, source"}
+    ],
+    "people_count_ranges": ["14 families; unverified 200-person claim"],
+    "resource_gaps": ["no photo or source for 200-person claim"],
+    "capacity_pressure": ["Community Hall: 80 - 43 = 37; 67 - 43 = 24"],
+    "calculation_checks": [
+      {"label": "effective shelter capacity and overflow", "source_ids": ["REPORT-009"], "inputs": ["stated capacity 45", "current register 41", "unusable beds 12"], "formula": "45 - 12 = 33; 41 - 33", "result": 8},
+      {"label": "insulin dose shortfall range", "source_ids": ["REPORT-011"], "inputs": ["listed patients 19", "available doses 12", "possible duplicate patients 2"], "formula": "19 - 12; (19 - 2) - 12", "result": {"before_reconciliation": 7, "if_all_possible_duplicates_confirmed": 5}},
+      {"label": "safe-capacity overflow", "source_ids": ["REPORT-020"], "inputs": ["previous capacity 80", "safe capacity 43", "registered 67"], "formula": "67 - 43", "result": 24}
+    ],
+    "route_constraints": ["North road blocked, South lane open to motorcycles and small vans"],
+    "cross_incident_dependencies": ["South Ghat access required for water purification and dry food distribution"],
+    "do_not_merge_notes": ["Do not automatically dispatch. Reconcile duplicates, identify life-safety cases, calculate shortages, and propose a review-required sequence."],
+    "prioritized_operational_plan": [
+      {"rank": 1, "action": "Verify water and food supplies", "reason": "Ensure availability for affected families", "dependency": "Incident-001", "verify_before_action": "Water and food sources confirmed"},
+      {"rank": 2, "action": "Secure safe passage for rescue operations", "reason": "Ensure rescue teams can reach affected areas", "dependency": "Incident-002", "verify_before_action": "Road conditions confirmed"},
+      {"rank": 3, "action": "Distribute medical supplies", "reason": "Address immediate medical needs", "dependency": "Incident-001, Incident-002", "verify_before_action": "Medical supplies available"}
+    ],
+    "missing_information_questions": ["What is the exact location of the collapsed bridge?", "How many people are currently at the Old Bus Stand?"],
+    "coordinator_review_gates": ["Review all unverified claims and contradictions before finalizing incident reports"],
+    "confidence_notes": ["Some reports lack specific details and may require further verification"],
+    "warnings": ["Unverified claims should be treated with caution"],
+    "quality_self_check": {"all_sources_covered": true, "numeric_facts_preserved": true, "unsupported_resource_gaps_avoided": true, "later_updates_preserved": true},
+    "human_review_required": true
+  },
+  "deterministic_semantic_issues": {
+    "truthfulness": ["REPORT-006 unverified 200-person claim appears as a confirmed people range"],
+    "calculation_gaps": ["calculation_checks missing source-linked row for safe-capacity overflow"]
+  },
+  "source_reports": "[REPORT-001 | 2026-07-11 09:04 | SMS] Old Bus Stand side: 14 families, drinking water finished at 08:30. Two children have diarrhoea. Caller says the east lane is flooded.\n\n[REPORT-002 | 09:07 | WhatsApp, Hinglish] Bus stand ke piche 18 log hain, 3 elderly, pani aa gaya north embankment mein. Hamara ghar dub raha hai. Teenager aur ek pregnant lady hai.\n\n[REPORT-003 | 09:12 | OCR] \"OLB BUS STN - 1B famly - watr nil - 3 old ppl - brdge rd closd\"\n\n[REPORT-004 | 09:15 | Volunteer update] REPORT-001 and REPORT-003 probably describe the same households; REPORT-002 may be a different lane behind the same landmark. Verify before combining counts.\n\n[REPORT-005 | 09:18 | Hindi] गर्भवती महिला को दवा चाहिए। क्लिनिक रोड पर पेड़ गिरा है। छोटी गाड़ी शायद निकल सकती है लेकिन एम्बुलेंस नहीं।\n\n[REPORT-006 | 09:22 | Social media, unverified] Main bridge has completely collapsed and 200 people are trapped. No source or photo metadata.\n\n[REPORT-007 | 09:27 | Police radio] Main bridge is damaged, not collapsed. One pedestrian lane remains open. Heavy vehicles prohibited. Rescue boats can launch from South Ghat.\n\n[REPORT-008 | 09:31 | Shelter lead] Community Hall capacity 80. Registered 67. Nine arrivals are waiting outside and may include four already counted at School Shelter.\n\n[REPORT-009 | 09:34 | School Shelter] Capacity 45. Current register 41, but one room with 12 beds is unusable because of electrical damage.\n\n[REPORT-010 | 09:38 | Inventory] Central store: 36 water packs, 18 ORS sachets, 4 tarpaulins, insulin stock unknown, two small vans, one high-clearance truck.\n\n[REPORT-011 | 09:41 | Clinic] 19 insulin-dependent patients are listed; 12 insulin doses remain. Two patients may be duplicates transferred from Ward 2 yesterday.\n\n[REPORT-012 | 09:45 | Field team] North road blocked. South lane open to motorcycles and small vans. High-clearance truck can reach South Ghat but not Clinic Road.\n\n[REPORT-013 | 09:49 | Voice transcript, Hinglish] River bank pe 6 log, do bachche aur ek dadi. Paani kamar tak. Location old pump house ke paas. Boat chahiye.\n\n[REPORT-014 | 09:53 | SMS] Four adults on a terrace near Old Pump House. Need boat. Could be same group as REPORT-013, but count and vulnerable details differ.\n\n[REPORT-015 | 09:57 | Medical desk] Pregnant patient from REPORT-005 has chest pain, not only medication need. Latest location: textile godown gate, not Clinic Road.\n\n[REPORT-016 | 10:03 | Logistics] One small van is reserved for oxygen cylinder delivery. Second van has wheelchair ramp. Truck fuel supports approximately three South Ghat trips.\n\n[REPORT-017 | 10:08 | Coordinator note] Do not automatically dispatch. Reconcile duplicates, identify life-safety cases, calculate shortages, and propose a review-required sequence.\n\n[REPORT-018 | 10:12 | Relief camp] Dry food available for 60 person-days. Water purification unit can serve 120 people/day but road access requires the small van.\n\n[REPORT-019 | 10:18 | Field radio] East road transformer zone is unsafe within 50 metres. Utility isolation confirmation pending.\n\n[REPORT-020 | 10:24 | Final update] Community Hall safe capacity reduced from 80 to 43 because one hall is unsafe. Existing registered count remains 67; relocation is required."
+  }

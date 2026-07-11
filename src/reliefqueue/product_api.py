@@ -16,6 +16,28 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, unquote, urlparse
 
+from .amd_quality import (
+    SAFE_METADATA,
+    WORKLOAD_COMPLETION_BUDGETS,
+    BurstParseError,
+    ContextBudgetError,
+    build_cross_case_repair_prompt,
+    build_cross_case_synthesis_prompt,
+    build_dossier_reasoning_ledger,
+    build_dossier_repair_prompt,
+    build_model_metadata,
+    build_workload_prompt,
+    cross_case_semantic_issues,
+    dossier_semantic_issues,
+    enforce_context_budget,
+    normalize_cross_case_synthesis,
+    normalize_structured_output,
+    parsed_preview,
+    reconcile_provider_dossier_outputs,
+    parse_burst_input,
+    sanitize_text,
+    synthesize_burst,
+)
 from .ai import AIConfig, OpenAICompatibleAdapter
 from .assignment import suggest_assignments
 from .cli import ROOT, build_cases
@@ -1118,6 +1140,11 @@ def _route(method: str, path: str, body: dict[str, Any]) -> dict[str, Any]:
         return update_local_scenario(body)
     if method == "POST" and route == "/api/ai/live-verification":
         return live_verification(body)
+    if method == "POST" and route == "/api/ai/burst-parse":
+        try:
+            return parsed_preview(str(body.get("text") or body.get("raw") or ""))
+        except BurstParseError as exc:
+            raise ProductApiError(400, str(exc)) from exc
     if method == "POST" and route == "/api/ai/burst-verification":
         return burst_verification(body)
     raise ProductApiError(404, f"unknown product API route: {route}")
@@ -1128,26 +1155,33 @@ BURST_VALID_CONCURRENCY = {1, 2, 4, 6, 8}
 
 
 def live_verification(body: dict[str, Any] | None = None) -> dict[str, Any]:
-    """POST /api/ai/live-verification — real inference request for judge evidence.
+    """POST /api/ai/live-verification — bounded real inference for judge evidence.
 
-    Contacts the configured AMD Developer Cloud / vLLM endpoint with
-    synthetic privacy-safe input (or judge-provided text if body["text"] is set).
-    Never returns the API key or secret headers.
+    Structured single/dossier calls bind a fresh nonce into the provider prompt.
+    A result is VERIFIED LIVE only when provider transport succeeded, provider
+    JSON was used for the displayed analysis, the nonce was echoed exactly, and
+    the completion was not truncated.
     """
+
     import datetime as _dt
+
     config = AIConfig.from_env()
+    verified_at = _dt.datetime.now(_dt.UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
     if config.mode != "openai_compatible":
+        metadata = build_model_metadata(served_model=config.model, verified_at=verified_at)
         return {
             "status": "failed",
             "verified_live": False,
-            "provider": "AMD Developer Cloud",
-            "runtime": "vLLM 0.23.0",
-            "accelerator": "AMD Instinct MI300X",
-            "served_model": None,
-            "underlying_model": "Qwen/Qwen2.5-7B-Instruct",
+            **{key: metadata.get(key) for key in ["provider", "runtime", "accelerator", "served_model", "underlying_model"]},
+            "model_metadata": metadata,
             "request_id": None,
             "challenge_nonce": None,
-            "verified_at": _dt.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "nonce_sent_to_provider": False,
+            "nonce_echoed_by_provider": False,
+            "verification_bound_to_nonce": False,
+            "provider_response_received": False,
+            "analysis_source": "none",
+            "verified_at": verified_at,
             "latency_ms": None,
             "prompt_tokens": None,
             "completion_tokens": None,
@@ -1159,31 +1193,500 @@ def live_verification(body: dict[str, Any] | None = None) -> dict[str, Any]:
             "warnings": ["AI_MODE is not openai_compatible; live verification requires the AMD endpoint to be configured."],
             "error": f"AI_MODE={config.mode!r}; set AI_MODE=openai_compatible and configure OPENAI_COMPAT_* to enable live verification.",
         }
+
     adapter = OpenAICompatibleAdapter(config)
+    workload_mode = str((body or {}).get("workload_mode") or (body or {}).get("mode") or "single")
+    if workload_mode in {"complex", "dossier"}:
+        workload_mode = "complex_dossier"
     user_text = str((body or {}).get("text") or "").strip()
-    if user_text:
+
+    if user_text and workload_mode in {"single", "complex_dossier"}:
+        try:
+            result = _structured_workload_verification(
+                adapter,
+                user_text,
+                workload_mode,
+                "JUDGE-SINGLE" if workload_mode == "single" else "JUDGE-DOSSIER",
+                synthetic_confirmed=bool((body or {}).get("synthetic_confirmed")),
+            )
+        except ContextBudgetError as exc:
+            result = _amd_quality_failure(str(exc), user_text, served_model=config.model)
+    elif user_text:
         result = adapter.verify_user_input(user_text, case_id="JUDGE-SINGLE")
+        result["provider_response_received"] = bool(result.get("verified_live"))
+        result["analysis_source"] = "provider" if result.get("verified_live") else "none"
+        result["nonce_sent_to_provider"] = False
+        result["nonce_echoed_by_provider"] = False
+        result["verification_bound_to_nonce"] = False
+        result["model_metadata"] = _model_metadata(result, verified_at=verified_at)
     else:
         result = adapter.live_verify()
-        # Add nonce to standard live_verify result for consistency
-        if "challenge_nonce" not in result:
-            result["challenge_nonce"] = os.urandom(8).hex() if result.get("verified_live") else None
-    result["verified_at"] = _dt.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+        result["challenge_nonce"] = None
+        result["provider_response_received"] = bool(result.get("verified_live"))
+        result["analysis_source"] = "provider" if result.get("verified_live") else "none"
+        result["nonce_sent_to_provider"] = False
+        result["nonce_echoed_by_provider"] = False
+        result["verification_bound_to_nonce"] = False
+        result["model_metadata"] = _model_metadata(result, verified_at=verified_at)
+
+    result["verified_at"] = verified_at
+    if isinstance(result.get("model_metadata"), dict):
+        result["model_metadata"]["verified_at"] = verified_at
     return result
 
 
-def burst_verification(body: dict[str, Any]) -> dict[str, Any]:
-    """POST /api/ai/burst-verification — concurrent live AMD/vLLM requests.
-
-    Accepts up to BURST_MAX_CASES reports with bounded concurrency.
-    Never accepts endpoint, API key, or model overrides from the browser.
-    """
+def _structured_workload_verification(
+    adapter: OpenAICompatibleAdapter,
+    user_text: str,
+    workload_mode: str,
+    case_id: str,
+    *,
+    synthetic_confirmed: bool = True,
+) -> dict[str, Any]:
     import datetime as _dt
+
+    def _utc_now() -> str:
+        return _dt.datetime.now(_dt.UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    def _normalize_call(
+        call_result: dict[str, Any],
+        nonce: str,
+        budget: dict[str, Any],
+    ) -> dict[str, Any]:
+        transport_verified = bool(call_result.get("verified_live")) and not bool(call_result.get("fallback_used"))
+        raw_content = str(call_result.get("raw_content") or call_result.get("generated_advisory") or "")
+        structured, warnings, source = normalize_structured_output(
+            workload_mode,
+            raw_content,
+            sanitized,
+            case_id,
+        )
+        nonce_echoed = source in {"provider", "provider_incomplete"} and str(
+            structured.get("challenge_nonce") or ""
+        ) == nonce
+        truncated = call_result.get("finish_reason") == "length"
+        semantic_issues = (
+            dossier_semantic_issues(structured, sanitized)
+            if workload_mode == "complex_dossier" and source in {"provider", "provider_incomplete"}
+            else []
+        )
+        semantic_complete = not semantic_issues
+        if semantic_issues and source == "provider":
+            source = "provider_incomplete"
+            warnings.append(
+                "Provider JSON failed deterministic dossier completeness checks; result is not VERIFIED LIVE."
+            )
+        return {
+            "transport_verified": transport_verified,
+            "structured": structured,
+            "warnings": warnings,
+            "analysis_source": source,
+            "nonce": nonce,
+            "nonce_echoed": nonce_echoed,
+            "truncated": truncated,
+            "semantic_issues": semantic_issues,
+            "semantic_complete": semantic_complete,
+            "budget": budget,
+            "result": call_result,
+        }
+
+    sanitized = sanitize_text(user_text)
+    deterministic_prompt_support = (
+        build_dossier_reasoning_ledger(sanitized)
+        if workload_mode == "complex_dossier"
+        else None
+    )
+    budget_key = "complex_dossier" if workload_mode == "complex_dossier" else "single"
+    requested_tokens = WORKLOAD_COMPLETION_BUDGETS[budget_key]
+
+    initial_nonce = os.urandom(8).hex()
+    initial_messages = build_workload_prompt(
+        workload_mode,
+        sanitized,
+        case_id,
+        initial_nonce,
+    )
+    initial_budget = enforce_context_budget(
+        initial_messages[-1]["content"],
+        requested_tokens,
+    )
+    initial_result = adapter.complete_messages(
+        initial_messages,
+        max_tokens=requested_tokens,
+    )
+    initial_call = _normalize_call(initial_result, initial_nonce, initial_budget)
+    calls = [initial_call]
+
+    selected = initial_call
+    repair_attempted = False
+    repair_succeeded = False
+    repair_reason: list[str] = []
+    repair_evidence: dict[str, Any] | None = None
+
+    should_repair = (
+        workload_mode == "complex_dossier"
+        and initial_call["transport_verified"]
+        and (
+            initial_call["analysis_source"] != "provider"
+            or not initial_call["nonce_echoed"]
+            or initial_call["truncated"]
+            or not initial_call["semantic_complete"]
+        )
+    )
+    if should_repair:
+        repair_attempted = True
+        repair_reason = list(initial_call["semantic_issues"])
+        if initial_call["analysis_source"] == "local_safe_fallback":
+            repair_reason.append("initial provider output was not valid structured JSON")
+        if not initial_call["nonce_echoed"]:
+            repair_reason.append("initial provider output did not echo the challenge nonce")
+        if initial_call["truncated"]:
+            repair_reason.append("initial provider output was truncated")
+
+        repair_nonce = os.urandom(8).hex()
+        repair_messages = build_dossier_repair_prompt(
+            sanitized,
+            initial_call["structured"],
+            list(dict.fromkeys(repair_reason)),
+            repair_nonce,
+        )
+        repair_tokens = WORKLOAD_COMPLETION_BUDGETS["complex_dossier_repair"]
+        repair_budget = enforce_context_budget(
+            repair_messages[-1]["content"],
+            repair_tokens,
+        )
+        repair_result = adapter.complete_messages(
+            repair_messages,
+            max_tokens=repair_tokens,
+        )
+        repair_call = _normalize_call(repair_result, repair_nonce, repair_budget)
+        calls.append(repair_call)
+
+        provider_reconciliation: dict[str, Any] | None = None
+        if (
+            initial_call["analysis_source"] in {"provider", "provider_incomplete"}
+            and repair_call["analysis_source"] in {"provider", "provider_incomplete"}
+            and repair_call["transport_verified"]
+            and repair_call["nonce_echoed"]
+            and not repair_call["truncated"]
+        ):
+            reconciled, provider_reconciliation = reconcile_provider_dossier_outputs(
+                initial_call["structured"],
+                repair_call["structured"],
+                source_text=sanitized,
+            )
+            reconciled_issues = dossier_semantic_issues(reconciled, sanitized)
+            reconciled_complete = (
+                not provider_reconciliation["missing_core_fields"]
+                and not reconciled_issues
+            )
+            repair_call = dict(repair_call)
+            repair_call["structured"] = reconciled
+            repair_call["semantic_issues"] = reconciled_issues
+            repair_call["semantic_complete"] = reconciled_complete
+            repair_call["analysis_source"] = (
+                "provider" if reconciled_complete else "provider_incomplete"
+            )
+            repair_call["provider_reconciliation"] = provider_reconciliation
+            repair_call["warnings"] = list(repair_call["warnings"]) + [
+                "Initial and repair AMD provider JSON were reconciled without "
+                "adding local operational conclusions."
+            ]
+            calls[-1] = repair_call
+
+        repair_succeeded = (
+            repair_call["transport_verified"]
+            and repair_call["analysis_source"] == "provider"
+            and repair_call["nonce_echoed"]
+            and not repair_call["truncated"]
+            and repair_call["semantic_complete"]
+        )
+        repair_evidence = {
+            "request_id": repair_result.get("request_id"),
+            "challenge_nonce": repair_nonce,
+            "verified_live": repair_succeeded,
+            "analysis_source": repair_call["analysis_source"],
+            "nonce_echoed_by_provider": repair_call["nonce_echoed"],
+            "semantic_completeness": repair_call["semantic_complete"],
+            "semantic_issues": repair_call["semantic_issues"],
+            "finish_reason": repair_result.get("finish_reason"),
+            "latency_ms": repair_result.get("latency_ms"),
+            "prompt_tokens": repair_result.get("prompt_tokens"),
+            "completion_tokens": repair_result.get("completion_tokens"),
+            "total_tokens": repair_result.get("total_tokens"),
+            "provider_reconciliation": provider_reconciliation,
+        }
+        # Prefer a provider JSON rewrite, even when it remains incomplete. If
+        # the repair call is malformed, retain the more useful initial provider
+        # output but keep the entire result unverified.
+        if repair_call["analysis_source"] in {"provider", "provider_incomplete"}:
+            selected = repair_call
+
+    selected_result = dict(selected["result"])
+    structured = selected["structured"]
+    analysis_source = selected["analysis_source"]
+    verified_at = _utc_now()
+    verified_live = (
+        selected["transport_verified"]
+        and analysis_source == "provider"
+        and selected["nonce_echoed"]
+        and not selected["truncated"]
+        and selected["semantic_complete"]
+    )
+
+    request_ids = [
+        str(call["result"].get("request_id"))
+        for call in calls
+        if call["result"].get("request_id")
+    ]
+    provider_prompt_tokens = sum(int(call["result"].get("prompt_tokens") or 0) for call in calls)
+    provider_completion_tokens = sum(int(call["result"].get("completion_tokens") or 0) for call in calls)
+    provider_total_tokens = sum(int(call["result"].get("total_tokens") or 0) for call in calls)
+    provider_latency_ms = sum(int(call["result"].get("latency_ms") or 0) for call in calls)
+
+    selected_result.update(
+        {
+            "verified_live": verified_live,
+            "provider_transport_verified_live": selected["transport_verified"],
+            "provider_response_received": any(call["transport_verified"] for call in calls),
+            "fallback_used": bool(selected_result.get("fallback_used"))
+            or analysis_source == "local_safe_fallback",
+            "analysis_source": analysis_source,
+            "challenge_nonce": selected["nonce"],
+            "nonce_sent_to_provider": True,
+            "nonce_echoed_by_provider": selected["nonce_echoed"],
+            "verification_bound_to_nonce": selected["nonce_echoed"],
+            "case_id": case_id,
+            "original_input": user_text,
+            "sanitized_input": sanitized,
+            "synthetic_input": sanitized,
+            "synthetic_text_sent": True,
+            "synthetic_input_confirmed": synthetic_confirmed,
+            "private_text_sent": False,
+            "secret_values_exposed": False,
+            "workload_mode": workload_mode,
+            "verified_at": verified_at,
+            "context_budget": selected["budget"],
+            "structured_output": structured,
+            "normalized_structured_record": structured,
+            "compact_json": structured,
+            "source_evidence_mapping": _source_evidence_mapping(sanitized, structured),
+            "operational_analysis": _operational_analysis(structured),
+            "generated_advisory": str(structured.get("situation_summary") or "") or None,
+            "provider_call_count": len(calls),
+            "provider_request_ids": request_ids,
+            "provider_prompt_tokens": provider_prompt_tokens,
+            "provider_completion_tokens": provider_completion_tokens,
+            "provider_total_tokens": provider_total_tokens,
+            "provider_latency_ms": provider_latency_ms,
+            "semantic_completeness": selected["semantic_complete"],
+            "semantic_issues": selected["semantic_issues"],
+            "repair_attempted": repair_attempted,
+            "repair_succeeded": repair_succeeded,
+            "repair_reason": list(dict.fromkeys(repair_reason)),
+            "repair_evidence": repair_evidence,
+            "provider_reconciliation": selected.get("provider_reconciliation"),
+            "deterministic_prompt_support": (
+                {
+                    "source_report_count": deterministic_prompt_support.get("source_report_count"),
+                    "calculation_candidate_count": len(
+                        deterministic_prompt_support.get("calculation_candidates") or []
+                    ),
+                    "conflict_update_signal_count": len(
+                        deterministic_prompt_support.get("conflict_update_source_ids") or []
+                    ),
+                    "support_type": "source_ledger_and_arithmetic_anchors",
+                    "final_analysis_source": analysis_source,
+                }
+                if deterministic_prompt_support
+                else None
+            ),
+        }
+    )
+    selected_result["request_settings"] = dict(selected_result.get("request_settings") or {}) | {
+        "single_completion_max_tokens": WORKLOAD_COMPLETION_BUDGETS["single"],
+        "complex_dossier_completion_max_tokens": WORKLOAD_COMPLETION_BUDGETS["complex_dossier"],
+        "complex_dossier_repair_max_tokens": WORKLOAD_COMPLETION_BUDGETS["complex_dossier_repair"],
+        "burst_case_completion_max_tokens": WORKLOAD_COMPLETION_BUDGETS["burst_case"],
+        "cross_case_synthesis_completion_max_tokens": WORKLOAD_COMPLETION_BUDGETS["cross_case_synthesis"],
+        "cross_case_synthesis_repair_max_tokens": WORKLOAD_COMPLETION_BUDGETS["cross_case_synthesis_repair"],
+        "selected_completion_max_tokens": (
+            WORKLOAD_COMPLETION_BUDGETS["complex_dossier_repair"]
+            if repair_attempted and selected is calls[-1]
+            else requested_tokens
+        ),
+        "silent_truncation_allowed": False,
+        "maximum_semantic_repair_calls": 1 if workload_mode == "complex_dossier" else 0,
+        "provider_response_reconciliation_enabled": workload_mode == "complex_dossier",
+    }
+    selected_result["model_metadata"] = _model_metadata(selected_result, verified_at=verified_at)
+    selected_result["warnings"] = (
+        list(selected_result.get("warnings") or [])
+        + list(selected["warnings"])
+    )
+    if repair_attempted:
+        selected_result["warnings"].append(
+            "One bounded AMD semantic-repair pass was used because the first dossier response was incomplete."
+        )
+    if analysis_source == "local_safe_fallback":
+        selected_result["warnings"].append(
+            "Displayed structured analysis is local safe fallback, not AMD-generated analysis."
+        )
+    if analysis_source == "provider_incomplete":
+        selected_result["warnings"].append(
+            "AMD returned structured JSON, but required operational sections or source coverage remain incomplete; result is not VERIFIED LIVE."
+        )
+    if analysis_source in {"provider", "provider_incomplete"} and not selected["nonce_echoed"]:
+        selected_result["warnings"].append(
+            "Provider response did not echo the prompt nonce; result is not labelled VERIFIED LIVE."
+        )
+        selected_result["verification_failure_reason"] = "provider_nonce_missing_or_mismatched"
+    if selected["truncated"]:
+        selected_result["verified_live"] = False
+        selected_result["warnings"].append(
+            "Provider output was truncated; result is not labelled VERIFIED LIVE."
+        )
+        selected_result["verification_failure_reason"] = "provider_output_truncated"
+    if selected["semantic_issues"]:
+        selected_result["verified_live"] = False
+        selected_result["verification_failure_reason"] = "provider_semantic_completeness_failed"
+    selected_result["warnings"] = list(dict.fromkeys(selected_result["warnings"]))
+    return selected_result
+
+
+
+def _amd_quality_failure(error: str, user_text: str, *, served_model: str | None = None) -> dict[str, Any]:
+    import datetime as _dt
+
+    sanitized = sanitize_text(user_text)
+    verified_at = _dt.datetime.now(_dt.UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+    metadata = build_model_metadata(served_model=served_model, verified_at=verified_at)
+    return {
+        "status": "failed",
+        "verified_live": False,
+        **{key: metadata.get(key) for key in ["provider", "runtime", "accelerator", "served_model", "underlying_model"]},
+        "model_metadata": metadata,
+        "request_id": None,
+        "challenge_nonce": None,
+        "nonce_sent_to_provider": False,
+        "nonce_echoed_by_provider": False,
+        "verification_bound_to_nonce": False,
+        "provider_response_received": False,
+        "analysis_source": "none",
+        "verified_at": verified_at,
+        "latency_ms": None,
+        "prompt_tokens": None,
+        "completion_tokens": None,
+        "total_tokens": None,
+        "fallback_used": True,
+        "human_review_required": True,
+        "synthetic_input": sanitized,
+        "original_input": user_text,
+        "sanitized_input": sanitized,
+        "synthetic_text_sent": False,
+        "private_text_sent": False,
+        "secret_values_exposed": False,
+        "generated_advisory": None,
+        "structured_output": None,
+        "warnings": ["Validation failed before provider call."],
+        "error": error,
+    }
+
+
+def _model_metadata(result: dict[str, Any], *, verified_at: str | None = None) -> dict[str, Any]:
+    return build_model_metadata(
+        served_model=str(result.get("served_model") or "") or None,
+        served_model_from_provider=bool(result.get("served_model_from_provider")),
+        provider=str(result.get("provider") or "") or None,
+        runtime=str(result.get("runtime") or "") or None,
+        accelerator=str(result.get("accelerator") or "") or None,
+        underlying_model=str(result.get("underlying_model") or "") or None,
+        verified_at=verified_at or result.get("verified_at"),
+    )
+
+
+def _source_evidence_mapping(sanitized: str, structured: dict[str, Any]) -> list[dict[str, str]]:
+    rows: list[dict[str, str]] = []
+
+    def add(field: str, evidence: Any, value: Any, confidence: str = "medium") -> None:
+        if value is None or value == "" or value == []:
+            return
+        if isinstance(evidence, (dict, list)):
+            evidence_text = json.dumps(evidence, ensure_ascii=False)
+        else:
+            evidence_text = str(evidence or sanitized[:240])
+        if isinstance(value, (dict, list)):
+            value_text = json.dumps(value, ensure_ascii=False)
+        else:
+            value_text = str(value)
+        rows.append(
+            {
+                "field": field,
+                "source_evidence": evidence_text[:500],
+                "normalized_value": value_text[:900],
+                "confidence": confidence,
+            }
+        )
+
+    add("situation_summary", sanitized[:300], structured.get("situation_summary"), "medium")
+    incidents = structured.get("consolidated_incidents")
+    if isinstance(incidents, list):
+        for index, incident in enumerate(incidents[:6], start=1):
+            if not isinstance(incident, dict):
+                add(f"consolidated_incident_{index}", sanitized[:300], incident)
+                continue
+            evidence = {
+                "source_ids": incident.get("source_ids") or [],
+                "evidence": incident.get("evidence") or [],
+            }
+            add(f"consolidated_incident_{index}", evidence, incident, str(incident.get("confidence") or "medium"))
+    else:
+        facts = structured.get("critical_facts") or []
+        for index, fact in enumerate(facts[:6] if isinstance(facts, list) else [facts], start=1):
+            add(f"critical_fact_{index}", sanitized[:300], fact)
+
+    for field in [
+        "contradictions",
+        "superseded_updates",
+        "unverified_claims",
+        "resource_implications",
+        "resource_gaps",
+        "capacity_pressure",
+        "route_and_access_analysis",
+        "route_constraints",
+    ]:
+        add(field, structured.get(field), structured.get(field), "medium")
+    return rows[:14]
+
+
+def _operational_analysis(structured: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "priorities": structured.get("recommended_priorities") or structured.get("prioritized_operational_plan") or [],
+        "contradictions": structured.get("contradictions") or [],
+        "routes": structured.get("route_and_access_analysis") or structured.get("route_constraints") or [],
+        "resources": structured.get("resource_implications") or structured.get("resource_gaps") or [],
+        "capacity_pressure": structured.get("capacity_pressure") or [],
+        "review_questions": structured.get("coordinator_questions") or structured.get("missing_information_questions") or [],
+        "human_review_required": True,
+    }
+
+
+def burst_verification(body: dict[str, Any]) -> dict[str, Any]:
+    """POST /api/ai/burst-verification — per-case AMD analysis plus AMD synthesis."""
+
+    import datetime as _dt
+
     reports_raw = body.get("reports", [])
+    raw_text = body.get("text") or body.get("raw")
     concurrency = int(body.get("concurrency", 4))
 
+    if raw_text and not reports_raw:
+        try:
+            reports_raw = [{"id": case.id, "text": case.text} for case in parse_burst_input(str(raw_text))]
+        except BurstParseError as exc:
+            raise ProductApiError(400, str(exc)) from exc
     if not isinstance(reports_raw, list) or len(reports_raw) == 0:
-        raise ProductApiError(400, "reports must be a non-empty array")
+        raise ProductApiError(400, "reports must be a non-empty array or text must contain parseable burst input")
     if len(reports_raw) > BURST_MAX_CASES:
         raise ProductApiError(400, f"Too many cases: {len(reports_raw)} exceeds maximum of {BURST_MAX_CASES}")
     if concurrency not in BURST_VALID_CONCURRENCY:
@@ -1195,27 +1698,79 @@ def burst_verification(body: dict[str, Any]) -> dict[str, Any]:
 
     adapter = OpenAICompatibleAdapter(config)
     batch_id = "batch-" + hashlib.sha256(f"{time.time()}:{os.urandom(8).hex()}".encode()).hexdigest()[:12]
-    started_at = _dt.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+    started_at = _dt.datetime.now(_dt.UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
-    # Normalize reports — accept str, or dict with id+text
-    normalized: list[dict[str, str]] = []
+    normalized: list[dict[str, Any]] = []
     for i, report in enumerate(reports_raw):
         if isinstance(report, str):
-            normalized.append({"case_id": f"case-{i + 1}", "text": report})
+            normalized.append({"case_id": f"case-{i + 1:02d}", "text": report})
         elif isinstance(report, dict):
-            normalized.append({
-                "case_id": str(report.get("id") or f"case-{i + 1}"),
-                "text": str(report.get("text") or ""),
-            })
+            normalized.append({"case_id": str(report.get("id") or f"case-{i + 1:02d}"), "text": str(report.get("text") or "")})
         else:
             raise ProductApiError(400, f"Invalid report format at index {i}: expected string or object with 'text'")
+    try:
+        for rep in normalized:
+            rep["sanitized_text"] = sanitize_text(rep["text"])
+            rep["context_budget"] = enforce_context_budget(rep["sanitized_text"], WORKLOAD_COMPLETION_BUDGETS["burst_case"])
+    except ContextBudgetError as exc:
+        raise ProductApiError(400, str(exc)) from exc
 
     overall_start = time.time()
 
-    def run_one(rep: dict[str, str]) -> dict[str, Any]:
-        result = adapter.verify_user_input(rep["text"], case_id=rep["case_id"])
-        result["case_id"] = rep["case_id"]
-        result["verified_at"] = _dt.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+    def run_one(rep: dict[str, Any]) -> dict[str, Any]:
+        nonce = os.urandom(8).hex()
+        messages = build_workload_prompt("burst_case", rep["sanitized_text"], rep["case_id"], nonce)
+        result = adapter.complete_messages(messages, max_tokens=WORKLOAD_COMPLETION_BUDGETS["burst_case"])
+        provider_transport_verified = bool(result.get("verified_live")) and not bool(result.get("fallback_used"))
+        raw_content = str(result.get("raw_content") or result.get("generated_advisory") or "")
+        structured, warnings, analysis_source = normalize_structured_output("burst_case", raw_content, rep["sanitized_text"], rep["case_id"])
+        nonce_echoed = analysis_source == "provider" and str(structured.get("challenge_nonce") or "") == nonce
+        truncated = result.get("finish_reason") == "length"
+        verified_live = provider_transport_verified and analysis_source == "provider" and nonce_echoed and not truncated
+        verified_at = _dt.datetime.now(_dt.UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+        result.update(
+            {
+                "case_id": rep["case_id"],
+                "verified_live": verified_live,
+                "provider_transport_verified_live": provider_transport_verified,
+                "provider_response_received": provider_transport_verified,
+                "fallback_used": bool(result.get("fallback_used")) or analysis_source == "local_safe_fallback",
+                "analysis_source": analysis_source,
+                "challenge_nonce": nonce,
+                "nonce_sent_to_provider": True,
+                "nonce_echoed_by_provider": nonce_echoed,
+                "verification_bound_to_nonce": nonce_echoed,
+                "verified_at": verified_at,
+                "original_input": rep["text"],
+                "sanitized_input": rep["sanitized_text"],
+                "synthetic_text_sent": True,
+                "synthetic_input_confirmed": bool(body.get("synthetic_confirmed")),
+                "private_text_sent": False,
+                "secret_values_exposed": False,
+                "context_budget": rep["context_budget"],
+                "structured_output": structured,
+                "normalized_structured_record": structured,
+                "compact_json": structured,
+                "source_evidence_mapping": _source_evidence_mapping(rep["sanitized_text"], structured),
+                "operational_analysis": _operational_analysis(structured),
+                "generated_advisory": str(structured.get("situation_summary") or "") or None,
+            }
+        )
+        result["request_settings"] = dict(result.get("request_settings") or {}) | {
+            "burst_case_completion_max_tokens": WORKLOAD_COMPLETION_BUDGETS["burst_case"],
+            "silent_truncation_allowed": False,
+        }
+        result["model_metadata"] = _model_metadata(result, verified_at=verified_at)
+        result["warnings"] = list(result.get("warnings") or []) + warnings
+        if analysis_source == "local_safe_fallback":
+            result["warnings"].append("Displayed case analysis is local safe fallback, not AMD-generated analysis.")
+        if analysis_source == "provider_incomplete":
+            result["warnings"].append("AMD returned structured JSON, but required case sections were incomplete; case is not VERIFIED LIVE.")
+        if analysis_source in {"provider", "provider_incomplete"} and not nonce_echoed:
+            result["warnings"].append("Provider did not echo the prompt nonce; case is not VERIFIED LIVE.")
+        if truncated:
+            result["verified_live"] = False
+            result["warnings"].append("Provider output was truncated; case is not VERIFIED LIVE.")
         return result
 
     case_results: list[dict[str, Any]] = []
@@ -1226,66 +1781,323 @@ def burst_verification(body: dict[str, Any]) -> dict[str, Any]:
                 case_results.append(future.result())
             except Exception as exc:
                 rep = futures[future]
-                case_results.append({
-                    "case_id": rep["case_id"],
-                    "status": "failed",
-                    "verified_live": False,
-                    "fallback_used": True,
-                    "human_review_required": True,
-                    "error": str(exc),
-                    "challenge_nonce": None,
-                    "request_id": None,
-                    "verified_at": _dt.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
-                    "latency_ms": None,
-                    "prompt_tokens": None,
-                    "completion_tokens": None,
-                    "total_tokens": None,
-                    "generated_advisory": None,
-                    "warnings": [str(exc)],
-                })
+                case_results.append(
+                    {
+                        "case_id": rep["case_id"],
+                        "status": "failed",
+                        "verified_live": False,
+                        "provider_response_received": False,
+                        "analysis_source": "none",
+                        "fallback_used": True,
+                        "human_review_required": True,
+                        "error": str(exc),
+                        "challenge_nonce": None,
+                        "nonce_sent_to_provider": False,
+                        "nonce_echoed_by_provider": False,
+                        "verification_bound_to_nonce": False,
+                        "request_id": None,
+                        "verified_at": _dt.datetime.now(_dt.UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                        "latency_ms": None,
+                        "prompt_tokens": None,
+                        "completion_tokens": None,
+                        "total_tokens": None,
+                        "generated_advisory": None,
+                        "warnings": [str(exc)],
+                    }
+                )
+
+    case_results.sort(key=lambda r: str(r.get("case_id", "")))
+
+    def _normalize_synthesis_call(
+        call_result: dict[str, Any],
+        nonce: str,
+        budget: dict[str, Any],
+    ) -> dict[str, Any]:
+        transport_verified = bool(call_result.get("verified_live")) and not bool(call_result.get("fallback_used"))
+        structured, warnings, source = normalize_cross_case_synthesis(
+            str(call_result.get("raw_content") or call_result.get("generated_advisory") or ""),
+            case_results,
+        )
+        nonce_echoed = source in {"provider", "provider_incomplete"} and str(
+            structured.get("challenge_nonce") or ""
+        ) == nonce
+        truncated = call_result.get("finish_reason") == "length"
+        semantic_issues = (
+            cross_case_semantic_issues(structured, case_results)
+            if source in {"provider", "provider_incomplete"}
+            else []
+        )
+        if semantic_issues and source == "provider":
+            source = "provider_incomplete"
+            warnings.append(
+                "Provider cross-case JSON failed deterministic safety/completeness checks."
+            )
+        return {
+            "result": call_result,
+            "structured": structured,
+            "warnings": warnings,
+            "analysis_source": source,
+            "nonce": nonce,
+            "nonce_echoed": nonce_echoed,
+            "truncated": truncated,
+            "semantic_issues": semantic_issues,
+            "semantic_complete": not semantic_issues,
+            "transport_verified": transport_verified,
+            "budget": budget,
+        }
+
+    synthesis_started = time.time()
+    synthesis_nonce = os.urandom(8).hex()
+    synthesis_messages = build_cross_case_synthesis_prompt(case_results, synthesis_nonce)
+    synthesis_budget = enforce_context_budget(
+        synthesis_messages[-1]["content"],
+        WORKLOAD_COMPLETION_BUDGETS["cross_case_synthesis"],
+    )
+    initial_synthesis_result = adapter.complete_messages(
+        synthesis_messages,
+        max_tokens=WORKLOAD_COMPLETION_BUDGETS["cross_case_synthesis"],
+    )
+    initial_synthesis_call = _normalize_synthesis_call(
+        initial_synthesis_result,
+        synthesis_nonce,
+        synthesis_budget,
+    )
+    synthesis_calls = [initial_synthesis_call]
+    selected_synthesis = initial_synthesis_call
+    synthesis_repair_attempted = False
+    synthesis_repair_succeeded = False
+    synthesis_repair_reason = list(initial_synthesis_call["semantic_issues"])
+
+    should_repair_synthesis = (
+        initial_synthesis_call["transport_verified"]
+        and (
+            initial_synthesis_call["analysis_source"] != "provider"
+            or not initial_synthesis_call["nonce_echoed"]
+            or initial_synthesis_call["truncated"]
+            or not initial_synthesis_call["semantic_complete"]
+        )
+    )
+    if should_repair_synthesis:
+        synthesis_repair_attempted = True
+        if initial_synthesis_call["analysis_source"] == "local_safe_fallback":
+            synthesis_repair_reason.append("initial synthesis was not valid structured JSON")
+        if not initial_synthesis_call["nonce_echoed"]:
+            synthesis_repair_reason.append("initial synthesis did not echo the challenge nonce")
+        if initial_synthesis_call["truncated"]:
+            synthesis_repair_reason.append("initial synthesis was truncated")
+
+        repair_nonce = os.urandom(8).hex()
+        repair_messages = build_cross_case_repair_prompt(
+            case_results,
+            initial_synthesis_call["structured"],
+            list(dict.fromkeys(synthesis_repair_reason)),
+            repair_nonce,
+        )
+        repair_tokens = WORKLOAD_COMPLETION_BUDGETS["cross_case_synthesis_repair"]
+        repair_budget = enforce_context_budget(
+            repair_messages[-1]["content"],
+            repair_tokens,
+        )
+        repair_result = adapter.complete_messages(
+            repair_messages,
+            max_tokens=repair_tokens,
+        )
+        repair_call = _normalize_synthesis_call(
+            repair_result,
+            repair_nonce,
+            repair_budget,
+        )
+        synthesis_calls.append(repair_call)
+        synthesis_repair_succeeded = (
+            repair_call["transport_verified"]
+            and repair_call["analysis_source"] == "provider"
+            and repair_call["nonce_echoed"]
+            and not repair_call["truncated"]
+            and repair_call["semantic_complete"]
+        )
+        if repair_call["analysis_source"] in {"provider", "provider_incomplete"}:
+            selected_synthesis = repair_call
+
+    synthesis_result = selected_synthesis["result"]
+    synthesis = selected_synthesis["structured"]
+    synthesis_source = selected_synthesis["analysis_source"]
+    synthesis_nonce = selected_synthesis["nonce"]
+    synthesis_nonce_echoed = selected_synthesis["nonce_echoed"]
+    synthesis_truncated = selected_synthesis["truncated"]
+    synthesis_semantic_issues = selected_synthesis["semantic_issues"]
+    synthesis_transport_verified = selected_synthesis["transport_verified"]
+    synthesis_verified = (
+        synthesis_transport_verified
+        and synthesis_source == "provider"
+        and synthesis_nonce_echoed
+        and not synthesis_truncated
+        and not synthesis_semantic_issues
+    )
+    synthesis_verified_at = _dt.datetime.now(_dt.UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+    synthesis_request_ids = [
+        str(call["result"].get("request_id"))
+        for call in synthesis_calls
+        if call["result"].get("request_id")
+    ]
+    synthesis_provider_prompt_tokens = sum(
+        int(call["result"].get("prompt_tokens") or 0) for call in synthesis_calls
+    )
+    synthesis_provider_completion_tokens = sum(
+        int(call["result"].get("completion_tokens") or 0) for call in synthesis_calls
+    )
+    synthesis_provider_total_tokens = sum(
+        int(call["result"].get("total_tokens") or 0) for call in synthesis_calls
+    )
+    synthesis_evidence = {
+        "status": synthesis_result.get("status"),
+        "verified_live": synthesis_verified,
+        "provider_transport_verified_live": synthesis_transport_verified,
+        "provider_response_received": any(call["transport_verified"] for call in synthesis_calls),
+        "private_text_sent": False,
+        "secret_values_exposed": False,
+        "synthetic_text_sent": True,
+        "synthetic_input_confirmed": bool(body.get("synthetic_confirmed")),
+        "analysis_source": synthesis_source,
+        "fallback_used": bool(synthesis_result.get("fallback_used")) or synthesis_source == "local_safe_fallback",
+        "request_id": synthesis_result.get("request_id"),
+        "provider_request_ids": synthesis_request_ids,
+        "provider_call_count": len(synthesis_calls),
+        "challenge_nonce": synthesis_nonce,
+        "nonce_sent_to_provider": True,
+        "nonce_echoed_by_provider": synthesis_nonce_echoed,
+        "verification_bound_to_nonce": synthesis_nonce_echoed,
+        "verified_at": synthesis_verified_at,
+        "latency_ms": synthesis_result.get("latency_ms") or round((time.time() - synthesis_started) * 1000),
+        "prompt_tokens": synthesis_result.get("prompt_tokens"),
+        "completion_tokens": synthesis_result.get("completion_tokens"),
+        "total_tokens": synthesis_result.get("total_tokens"),
+        "provider_prompt_tokens": synthesis_provider_prompt_tokens,
+        "provider_completion_tokens": synthesis_provider_completion_tokens,
+        "provider_total_tokens": synthesis_provider_total_tokens,
+        "finish_reason": synthesis_result.get("finish_reason"),
+        "context_budget": selected_synthesis["budget"],
+        "semantic_completeness": not synthesis_semantic_issues,
+        "semantic_issues": synthesis_semantic_issues,
+        "repair_attempted": synthesis_repair_attempted,
+        "repair_succeeded": synthesis_repair_succeeded,
+        "repair_reason": list(dict.fromkeys(synthesis_repair_reason)),
+        "warnings": list(synthesis_result.get("warnings") or []) + list(selected_synthesis["warnings"]),
+        "model_metadata": _model_metadata(synthesis_result, verified_at=synthesis_verified_at),
+        "human_review_required": True,
+    }
+    if synthesis_repair_attempted:
+        synthesis_evidence["warnings"].append(
+            "One bounded AMD semantic-repair pass was used because the first cross-case synthesis was incomplete or unsafe."
+        )
+    if synthesis_source == "local_safe_fallback":
+        synthesis_evidence["warnings"].append(
+            "Displayed cross-case synthesis is local safe fallback, not AMD-generated synthesis."
+        )
+    if synthesis_source == "provider_incomplete":
+        synthesis_evidence["warnings"].append(
+            "AMD returned cross-case JSON, but required synthesis sections or safety checks remain incomplete; synthesis is not VERIFIED LIVE."
+        )
+    if synthesis_source in {"provider", "provider_incomplete"} and not synthesis_nonce_echoed:
+        synthesis_evidence["warnings"].append(
+            "Provider did not echo the synthesis nonce; synthesis is not VERIFIED LIVE."
+        )
+    if synthesis_truncated:
+        synthesis_evidence["warnings"].append(
+            "Provider synthesis was truncated; synthesis is not VERIFIED LIVE."
+        )
+    if synthesis_semantic_issues:
+        synthesis_evidence["verification_failure_reason"] = "provider_semantic_completeness_failed"
+    synthesis_evidence["warnings"] = list(dict.fromkeys(synthesis_evidence["warnings"]))
 
     total_elapsed = round((time.time() - overall_start) * 1000)
-    completed_at = _dt.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
-
-    # Aggregate stats
+    completed_at = _dt.datetime.now(_dt.UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
     succeeded = sum(1 for r in case_results if r.get("verified_live") is True and not r.get("fallback_used"))
-    failed_count = sum(1 for r in case_results if not r.get("verified_live"))
+    failed_count = len(case_results) - succeeded
     fallback_responses = sum(1 for r in case_results if r.get("fallback_used"))
     latencies = sorted(r["latency_ms"] for r in case_results if r.get("latency_ms") is not None)
     median_latency = latencies[len(latencies) // 2] if latencies else None
     p95_latency = latencies[max(0, int(len(latencies) * 0.95) - 1)] if latencies else None
-    total_prompt = sum(r.get("prompt_tokens") or 0 for r in case_results)
-    total_completion = sum(r.get("completion_tokens") or 0 for r in case_results)
-    total_tokens = sum(r.get("total_tokens") or 0 for r in case_results)
+    case_prompt_tokens = sum(r.get("prompt_tokens") or 0 for r in case_results)
+    case_completion_tokens = sum(r.get("completion_tokens") or 0 for r in case_results)
+    case_total_tokens = sum(r.get("total_tokens") or 0 for r in case_results)
+    synthesis_prompt_tokens = synthesis_provider_prompt_tokens
+    synthesis_completion_tokens = synthesis_provider_completion_tokens
+    synthesis_total_tokens = synthesis_provider_total_tokens
+    provider_prompt_tokens = case_prompt_tokens + synthesis_prompt_tokens
+    provider_completion_tokens = case_completion_tokens + synthesis_completion_tokens
+    provider_total_tokens = case_total_tokens + synthesis_total_tokens
     throughput = round(len(case_results) / max(total_elapsed / 1000, 0.001), 2)
-
-    case_results.sort(key=lambda r: str(r.get("case_id", "")))
+    metadata = _model_metadata(synthesis_result if synthesis_transport_verified else (case_results[0] if case_results else {}), verified_at=completed_at)
+    batch_verified = succeeded == len(case_results) and synthesis_verified
+    batch_fallback = fallback_responses > 0 or bool(synthesis_evidence.get("fallback_used"))
 
     return {
-        "status": "ok",
+        "status": "ok" if batch_verified else "partial",
+        "verified_live": batch_verified,
+        "fallback_used": batch_fallback,
         "batch_id": batch_id,
         "started_at": started_at,
         "completed_at": completed_at,
         "submitted": len(normalized),
+        "parsed": len(normalized),
         "succeeded": succeeded,
         "failed": failed_count,
         "live_amd_responses": succeeded,
+        "live_provider_calls_succeeded": succeeded + sum(
+            1 for call in synthesis_calls if call["transport_verified"]
+        ),
+        "provider_call_count": len(normalized) + len(synthesis_calls),
+        "provider_request_ids": [
+            *[
+                str(case.get("request_id"))
+                for case in case_results
+                if case.get("request_id")
+            ],
+            *synthesis_request_ids,
+        ],
+        "synthesis_call_count": len(synthesis_calls),
         "fallback_responses": fallback_responses,
         "total_elapsed_ms": total_elapsed,
         "median_latency_ms": median_latency,
         "p95_latency_ms": p95_latency,
-        "prompt_tokens": total_prompt,
-        "completion_tokens": total_completion,
-        "total_tokens": total_tokens,
+        # Backward-compatible case-analysis totals. Existing API/tests define
+        # these three fields as the sum of per-case results only.
+        "prompt_tokens": case_prompt_tokens,
+        "completion_tokens": case_completion_tokens,
+        "total_tokens": case_total_tokens,
+        # Additional transparent accounting for the separate AMD synthesis call.
+        "synthesis_prompt_tokens": synthesis_prompt_tokens,
+        "synthesis_completion_tokens": synthesis_completion_tokens,
+        "synthesis_total_tokens": synthesis_total_tokens,
+        "provider_prompt_tokens": provider_prompt_tokens,
+        "provider_completion_tokens": provider_completion_tokens,
+        "provider_total_tokens": provider_total_tokens,
         "approximate_throughput_rps": throughput,
-        "active_model": "Qwen/Qwen2.5-7B-Instruct",
-        "served_model": "reliefqueue-amd",
-        "runtime": "vLLM 0.23.0",
-        "accelerator": "AMD Instinct MI300X",
+        "active_model": metadata.get("underlying_model") or metadata.get("served_model") or "not reported",
+        "served_model": metadata.get("served_model"),
+        "runtime": metadata.get("runtime"),
+        "accelerator": metadata.get("accelerator"),
+        "model_metadata": metadata,
+        "request_settings": {
+            "single_completion_max_tokens": WORKLOAD_COMPLETION_BUDGETS["single"],
+            "complex_dossier_completion_max_tokens": WORKLOAD_COMPLETION_BUDGETS["complex_dossier"],
+            "burst_case_completion_max_tokens": WORKLOAD_COMPLETION_BUDGETS["burst_case"],
+            "cross_case_synthesis_completion_max_tokens": WORKLOAD_COMPLETION_BUDGETS["cross_case_synthesis"],
+            "cross_case_synthesis_repair_max_tokens": WORKLOAD_COMPLETION_BUDGETS["cross_case_synthesis_repair"],
+            "maximum_cross_case_semantic_repair_calls": 1,
+            "concurrency": concurrency,
+            "silent_truncation_allowed": False,
+        },
+        "parsed_preview": [{"id": r["case_id"], "text": r["text"][:180]} for r in normalized],
+        "cross_case_synthesis": synthesis,
+        "cross_case_evidence": synthesis_evidence,
+        "synthetic_text_sent": True,
+        "synthetic_input_confirmed": bool(body.get("synthetic_confirmed")),
+        "private_text_sent": False,
+        "secret_values_exposed": False,
         "human_review_required": True,
         "cases": case_results,
     }
-
 
 def local_scenario() -> dict[str, Any]:
     return {"status": "loaded", "scenario": dict(_LOCAL_SCENARIO), "audit": list(_LOCAL_AUDIT[-6:])}
@@ -1540,3 +2352,8 @@ def _ensure_group(redis_url: str, stream: str, group: str) -> None:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
+
+# BEGIN RELIEFQUEUE AMD DOSSIER PROVIDER RECONCILIATION PART 5
+# Two provider-authored dossier calls may be reconciled; no local operational conclusions are generated.
+# END RELIEFQUEUE AMD DOSSIER PROVIDER RECONCILIATION PART 5

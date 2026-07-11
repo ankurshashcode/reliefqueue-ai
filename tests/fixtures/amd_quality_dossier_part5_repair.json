@@ -1,0 +1,380 @@
+{
+  "schema_version": "reliefqueue-dossier-analysis/v2",
+  "workload_mode": "complex_dossier",
+  "challenge_nonce": "da16c50b26f648fc",
+  "output_contract": {
+    "source_id": "REPORT-001",
+    "disposition": "incident",
+    "linked_incident_id": "string"
+  },
+  "source_coverage": [
+    {
+      "source_id": "REPORT-001",
+      "disposition": "incident",
+      "linked_incident_id": null
+    },
+    {
+      "source_id": "REPORT-002",
+      "disposition": "incident",
+      "linked_incident_id": null
+    },
+    {
+      "source_id": "REPORT-003",
+      "disposition": "incident",
+      "linked_incident_id": null
+    },
+    {
+      "source_id": "REPORT-006",
+      "disposition": "unverified",
+      "linked_incident_id": null
+    },
+    {
+      "source_id": "REPORT-007",
+      "disposition": "incident",
+      "linked_incident_id": null
+    },
+    {
+      "source_id": "REPORT-008",
+      "disposition": "incident",
+      "linked_incident_id": null
+    },
+    {
+      "source_id": "REPORT-009",
+      "disposition": "incident",
+      "linked_incident_id": null
+    },
+    {
+      "source_id": "REPORT-010",
+      "disposition": "incident",
+      "linked_incident_id": null
+    },
+    {
+      "source_id": "REPORT-011",
+      "disposition": "incident",
+      "linked_incident_id": null
+    },
+    {
+      "source_id": "REPORT-012",
+      "disposition": "incident",
+      "linked_incident_id": null
+    },
+    {
+      "source_id": "REPORT-013",
+      "disposition": "incident",
+      "linked_incident_id": null
+    },
+    {
+      "source_id": "REPORT-014",
+      "disposition": "incident",
+      "linked_incident_id": null
+    },
+    {
+      "source_id": "REPORT-015",
+      "disposition": "incident",
+      "linked_incident_id": null
+    },
+    {
+      "source_id": "REPORT-016",
+      "disposition": "incident",
+      "linked_incident_id": null
+    },
+    {
+      "source_id": "REPORT-018",
+      "disposition": "incident",
+      "linked_incident_id": null
+    },
+    {
+      "source_id": "REPORT-019",
+      "disposition": "incident",
+      "linked_incident_id": null
+    },
+    {
+      "source_id": "REPORT-020",
+      "disposition": "incident",
+      "linked_incident_id": null
+    }
+  ],
+  "uncovered_source_ids": [],
+  "source_evidence_index": [
+    {
+      "source_id": "REPORT-001",
+      "terms": [],
+      "numbers": ["14", "08:30"]
+    },
+    {
+      "source_id": "REPORT-002",
+      "terms": ["pregnant"],
+      "numbers": ["18", "3"]
+    },
+    {
+      "source_id": "REPORT-003",
+      "terms": [],
+      "numbers": ["3"]
+    },
+    {
+      "source_id": "REPORT-006",
+      "terms": ["bridge", "collapsed"],
+      "numbers": ["200"]
+    },
+    {
+      "source_id": "REPORT-007",
+      "terms": ["bridge", "collapsed", "damaged", "boat"],
+      "numbers": []
+    },
+    {
+      "source_id": "REPORT-008",
+      "terms": ["capacity", "registered"],
+      "numbers": ["80", "67"]
+    },
+    {
+      "source_id": "REPORT-009",
+      "terms": ["capacity"],
+      "numbers": ["45", "41", "12"]
+    },
+    {
+      "source_id": "REPORT-010",
+      "terms": ["insulin", "small van", "high-clearance truck"],
+      "numbers": ["36", "18", "4"]
+    },
+    {
+      "source_id": "REPORT-011",
+      "terms": ["insulin"],
+      "numbers": ["19", "12", "2"]
+    },
+    {
+      "source_id": "REPORT-012",
+      "terms": ["clinic road", "north road", "south lane", "small van", "high-clearance truck"],
+      "numbers": []
+    },
+    {
+      "source_id": "REPORT-013",
+      "terms": ["boat"],
+      "numbers": ["6"]
+    },
+    {
+      "source_id": "REPORT-014",
+      "terms": ["boat"],
+      "numbers": []
+    },
+    {
+      "source_id": "REPORT-015",
+      "terms": ["pregnant", "chest pain", "textile", "clinic road"],
+      "numbers": []
+    },
+    {
+      "source_id": "REPORT-016",
+      "terms": ["wheelchair", "oxygen", "small van"],
+      "numbers": []
+    },
+    {
+      "source_id": "REPORT-018",
+      "terms": ["water purification", "dry food", "small van"],
+      "numbers": ["60", "120"]
+    },
+    {
+      "source_id": "REPORT-019",
+      "terms": ["transformer", "utility isolation"],
+      "numbers": ["50"]
+    },
+    {
+      "source_id": "REPORT-020",
+      "terms": ["capacity", "registered", "safe capacity"],
+      "numbers": ["80", "43", "67"]
+    }
+  ],
+  "consolidated_incidents": [
+    {
+      "incident_id": "string",
+      "source_ids": ["REPORT-001"],
+      "location": "Old Bus Stand",
+      "needs": "drinking water",
+      "people_range": "14 families; unverified 200-person claim",
+      "vulnerable_groups": "children with diarrhea",
+      "urgency_rationale": "drinking water finished at 08:30",
+      "missing_fields": "location flooding",
+      "confidence": "high"
+    },
+    {
+      "incident_id": "string",
+      "source_ids": ["REPORT-002"],
+      "location": "Bus stand ke piche",
+      "needs": "rescue boat",
+      "people_range": "18 log; 3 elderly; 3 teenagers; 1 pregnant woman",
+      "vulnerable_groups": "elderly, pregnant woman",
+      "urgency_rationale": "water flooding north embankment, home at risk",
+      "missing_fields": "location flooding",
+      "confidence": "high"
+    },
+    {
+      "incident_id": "string",
+      "source_ids": ["REPORT-003"],
+      "location": "OLB BUS STN",
+      "needs": "water",
+      "people_range": "1B family; 3 old people",
+      "vulnerable_groups": "elderly",
+      "urgency_rationale": "water supply finished",
+      "missing_fields": "location flooding",
+      "confidence": "high"
+    },
+    {
+      "incident_id": "string",
+      "source_ids": ["REPORT-006"],
+      "location": "main bridge",
+      "needs": "rescue operation",
+      "people_range": "200 people; unverified",
+      "vulnerable_groups": "none",
+      "urgency_rationale": "bridge collapsed",
+      "missing_fields": "location damage",
+      "confidence": "low"
+    },
+    {
+      "incident_id": "string",
+      "source_ids": ["REPORT-007"],
+      "location": "main bridge",
+      "needs": "rescue operation",
+      "people_range": "200 people; unverified",
+      "vulnerable_groups": "pedestrian lane open, heavy vehicles prohibited",
+      "urgency_rationale": "bridge damaged, not collapsed",
+      "missing_fields": "location damage",
+      "confidence": "high"
+    }
+  ],
+  "duplicate_clusters": [
+    {
+      "source_ids": ["REPORT-001", "REPORT-003"],
+      "reason": "same households"
+    },
+    {
+      "source_ids": ["REPORT-013", "REPORT-014"],
+      "reason": "same group, different count and vulnerable details"
+    }
+  ],
+  "contradictions": [
+    {
+      "source_ids": ["REPORT-004", "REPORT-007"],
+      "conflict": "main bridge collapsed vs. damaged",
+      "working_assumption": "main bridge damaged, not collapsed"
+    },
+    {
+      "source_ids": ["REPORT-010", "REPORT-012"],
+      "conflict": "north road blocked vs. south lane open",
+      "working_assumption": "north road blocked, south lane open"
+    }
+  ],
+  "superseded_updates": [
+    {
+      "older_source_id": "REPORT-001",
+      "newer_source_id": "REPORT-003",
+      "change": "same households"
+    }
+  ],
+  "unverified_claims": [
+    {
+      "source_ids": ["REPORT-006"],
+      "claim": "200 people trapped",
+      "verification_needed": "unverified, no source or photo metadata"
+    }
+  ],
+  "people_count_ranges": [
+    "14 families; unverified 200-person claim"
+  ],
+  "resource_gaps": [
+    "oxygen cylinders shortage; source only states allocation or availability",
+    "wheelchairs shortage; source only states allocation or availability",
+    "high-clearance truck shortage; source only states allocation or availability"
+  ],
+  "capacity_pressure": [
+    "Community Hall capacity 80, registered 67, safe capacity 43, overflow 24"
+  ],
+  "calculation_checks": [
+    {
+      "label": "effective shelter capacity and overflow",
+      "source_ids": ["REPORT-009"],
+      "inputs": ["stated capacity 45", "current register 41", "unusable beds 12"],
+      "formula": "45 - 12 = 33; 41 - 33",
+      "result": 8
+    },
+    {
+      "label": "insulin dose shortfall range",
+      "source_ids": ["REPORT-011"],
+      "inputs": ["listed patients 19", "available doses 12", "possible duplicate patients 2"],
+      "formula": "19 - 12; (19 - 2) - 12",
+      "result": {"before_reconciliation": 7, "if_all_possible_duplicates_confirmed": 5}
+    },
+    {
+      "label": "safe-capacity overflow",
+      "source_ids": ["REPORT-020"],
+      "inputs": ["previous capacity 80", "safe capacity 43", "registered 67"],
+      "formula": "67 - 43",
+      "result": 24
+    }
+  ],
+  "route_constraints": [
+    "North road blocked, south lane open to motorcycles and small vans, high-clearance truck can reach South Ghat but not Clinic Road"
+  ],
+  "cross_incident_dependencies": [
+    "South Ghat access requires small van"
+  ],
+  "do_not_merge_notes": [
+    "Do not automatically dispatch. Reconcile duplicates, identify life-safety cases, calculate shortages, and propose a review-required sequence."
+  ],
+  "prioritized_operational_plan": [
+    {
+      "rank": 1,
+      "action": "provide drinking water",
+      "reason": "water supply finished at 08:30",
+      "dependency": "none",
+      "verify_before_action": "check water purification unit availability"
+    },
+    {
+      "rank": 2,
+      "action": "evacuate flooded area",
+      "reason": "flooded east lane",
+      "dependency": "none",
+      "verify_before_action": "confirm water purification unit availability"
+    },
+    {
+      "rank": 3,
+      "action": "provide rescue boat",
+      "reason": "home at risk due to flooding",
+      "dependency": "none",
+      "verify_before_action": "check boat availability"
+    },
+    {
+      "rank": 4,
+      "action": "provide medical assistance",
+      "reason": "pregnant patient with chest pain",
+      "dependency": "none",
+      "verify_before_action": "confirm medical resources"
+    },
+    {
+      "rank": 5,
+      "action": "relocate to safe shelter",
+      "reason": "Community Hall capacity 80, registered 67, safe capacity 43, overflow 24",
+      "dependency": "none",
+      "verify_before_action": "confirm shelter availability"
+    }
+  ],
+  "missing_information_questions": [
+    "What is the exact location of the flooded area?",
+    "Are there any other bridges affected besides the main bridge?"
+  ],
+  "coordinator_review_gates": [
+    "Review all source reports for accuracy and completeness.",
+    "Verify all claims and calculations against source evidence.",
+    "Propose a prioritized operational plan based on verified information."
+  ],
+  "confidence_notes": [
+    "Some claims are unverified or based on unconfirmed reports."
+  ],
+  "warnings": [
+    "Unverified claims should be treated with caution."
+  ],
+  "quality_self_check": {
+    "all_sources_covered": true,
+    "numeric_facts_preserved": true,
+    "unsupported_resource_gaps_avoided": true,
+    "later_updates_preserved": true
+  },
+  "human_review_required": true
+}

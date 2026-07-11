@@ -1,0 +1,353 @@
+{
+  "schema_version": "reliefqueue-dossier-analysis/v2",
+  "workload_mode": "complex_dossier",
+  "challenge_nonce": "e3965b80286276dd",
+  "output_contract": {
+    "source_id": "REPORT-001",
+    "disposition": "incident",
+    "linked_incident_id": "string"
+  },
+  "source_coverage": [
+    {
+      "source_id": "REPORT-001",
+      "disposition": "incident",
+      "linked_incident_id": null
+    },
+    {
+      "source_id": "REPORT-002",
+      "disposition": "incident",
+      "linked_incident_id": null
+    },
+    {
+      "source_id": "REPORT-003",
+      "disposition": "incident",
+      "linked_incident_id": null
+    },
+    {
+      "source_id": "REPORT-006",
+      "disposition": "unverified",
+      "linked_incident_id": null
+    },
+    {
+      "source_id": "REPORT-007",
+      "disposition": "contradiction",
+      "linked_incident_id": null
+    },
+    {
+      "source_id": "REPORT-008",
+      "disposition": "incident",
+      "linked_incident_id": null
+    },
+    {
+      "source_id": "REPORT-009",
+      "disposition": "incident",
+      "linked_incident_id": null
+    },
+    {
+      "source_id": "REPORT-010",
+      "disposition": "resource",
+      "linked_incident_id": null
+    },
+    {
+      "source_id": "REPORT-011",
+      "disposition": "incident",
+      "linked_incident_id": null
+    },
+    {
+      "source_id": "REPORT-012",
+      "disposition": "resource",
+      "linked_incident_id": null
+    },
+    {
+      "source_id": "REPORT-013",
+      "disposition": "incident",
+      "linked_incident_id": null
+    },
+    {
+      "source_id": "REPORT-014",
+      "disposition": "incident",
+      "linked_incident_id": null
+    },
+    {
+      "source_id": "REPORT-015",
+      "disposition": "incident",
+      "linked_incident_id": null
+    },
+    {
+      "source_id": "REPORT-016",
+      "disposition": "resource",
+      "linked_incident_id": null
+    },
+    {
+      "source_id": "REPORT-018",
+      "disposition": "resource",
+      "linked_incident_id": null
+    },
+    {
+      "source_id": "REPORT-019",
+      "disposition": "resource",
+      "linked_incident_id": null
+    },
+    {
+      "source_id": "REPORT-020",
+      "disposition": "incident",
+      "linked_incident_id": null
+    }
+  ],
+  "uncovered_source_ids": [],
+  "source_evidence_index": [
+    {
+      "source_id": "REPORT-001",
+      "terms": [],
+      "numbers": ["14", "08:30"]
+    },
+    {
+      "source_id": "REPORT-002",
+      "terms": ["pregnant"],
+      "numbers": ["18", "3"]
+    },
+    {
+      "source_id": "REPORT-003",
+      "terms": [],
+      "numbers": ["3"]
+    },
+    {
+      "source_id": "REPORT-006",
+      "terms": ["bridge", "collapsed"],
+      "numbers": ["200"]
+    },
+    {
+      "source_id": "REPORT-007",
+      "terms": ["bridge", "collapsed", "damaged", "boat"],
+      "numbers": []
+    },
+    {
+      "source_id": "REPORT-008",
+      "terms": ["capacity", "registered"],
+      "numbers": ["80", "67"]
+    },
+    {
+      "source_id": "REPORT-009",
+      "terms": ["capacity"],
+      "numbers": ["45", "41", "12"]
+    },
+    {
+      "source_id": "REPORT-010",
+      "terms": ["insulin", "small van", "high-clearance truck"],
+      "numbers": ["36", "18", "4"]
+    },
+    {
+      "source_id": "REPORT-011",
+      "terms": ["insulin"],
+      "numbers": ["19", "12", "2"]
+    },
+    {
+      "source_id": "REPORT-012",
+      "terms": ["clinic road", "north road", "south lane", "small van", "high-clearance truck"],
+      "numbers": []
+    },
+    {
+      "source_id": "REPORT-013",
+      "terms": ["boat"],
+      "numbers": ["6"]
+    },
+    {
+      "source_id": "REPORT-014",
+      "terms": ["boat"],
+      "numbers": []
+    },
+    {
+      "source_id": "REPORT-015",
+      "terms": ["pregnant", "chest pain", "textile", "clinic road"],
+      "numbers": []
+    },
+    {
+      "source_id": "REPORT-016",
+      "terms": ["wheelchair", "oxygen", "small van"],
+      "numbers": []
+    },
+    {
+      "source_id": "REPORT-018",
+      "terms": ["water purification", "dry food", "small van"],
+      "numbers": ["60", "120"]
+    },
+    {
+      "source_id": "REPORT-019",
+      "terms": ["transformer", "utility isolation"],
+      "numbers": ["50"]
+    },
+    {
+      "source_id": "REPORT-020",
+      "terms": ["capacity", "registered", "safe capacity"],
+      "numbers": ["80", "43", "67"]
+    }
+  ],
+  "consolidated_incidents": [
+    {
+      "incident_id": "string",
+      "source_ids": ["REPORT-001"],
+      "location": "Old Bus Stand side",
+      "needs": "drinking water",
+      "people_range": "14 families; qualify unverified claims",
+      "vulnerable_groups": "elderly, children with diarrhea",
+      "urgency_rationale": "drinking water finished at 08:30",
+      "missing_fields": "flooded lane",
+      "confidence": "high"
+    },
+    {
+      "incident_id": "string",
+      "source_ids": ["REPORT-002"],
+      "location": "Bus stand ke piche",
+      "needs": "rescue, water",
+      "people_range": "18 log, 3 elderly; qualify unverified claims",
+      "vulnerable_groups": "elderly, pregnant woman, teenager",
+      "urgency_rationale": "ghar dub raha hai",
+      "missing_fields": "location",
+      "confidence": "high"
+    },
+    {
+      "incident_id": "string",
+      "source_ids": ["REPORT-003"],
+      "location": "OLB BUS STN",
+      "needs": "water",
+      "people_range": "1B family, 3 old ppl; qualify unverified claims",
+      "vulnerable_groups": "elderly",
+      "urgency_rationale": "watr nil",
+      "missing_fields": "bridge road closed",
+      "confidence": "high"
+    },
+    {
+      "incident_id": "string",
+      "source_ids": ["REPORT-006"],
+      "location": "main bridge",
+      "needs": "rescue, water",
+      "people_range": "200 people; qualify unverified claims",
+      "vulnerable_groups": "general population",
+      "urgency_rationale": "collapsed",
+      "missing_fields": "photo metadata",
+      "confidence": "low"
+    },
+    {
+      "incident_id": "string",
+      "source_ids": ["REPORT-007"],
+      "location": "main bridge",
+      "needs": "rescue, water",
+      "people_range": "200 people; qualify unverified claims",
+      "vulnerable_groups": "general population",
+      "urgency_rationale": "damaged, not collapsed",
+      "missing_fields": "pedestrian lane open, heavy vehicles prohibited, rescue boats from South Ghat",
+      "confidence": "high"
+    }
+  ],
+  "duplicate_clusters": [
+    {
+      "source_ids": ["REPORT-001", "REPORT-003"],
+      "reason": "same households"
+    },
+    {
+      "source_ids": ["REPORT-013", "REPORT-014"],
+      "reason": "same group, different counts"
+    }
+  ],
+  "contradictions": [
+    {
+      "source_ids": ["REPORT-004", "REPORT-007"],
+      "conflict": "main bridge collapsed vs. damaged",
+      "working_assumption": "main bridge damaged, not collapsed"
+    },
+    {
+      "source_ids": ["REPORT-010", "REPORT-012"],
+      "conflict": "north road blocked vs. south lane open",
+      "working_assumption": "south lane open to motorcycles and small vans"
+    },
+    {
+      "source_ids": ["REPORT-011", "REPORT-015"],
+      "conflict": "19 insulin-dependent patients vs. chest pain in pregnant patient",
+      "working_assumption": "pregnant patient needs more than just medication"
+    }
+  ],
+  "superseded_updates": [
+    {
+      "older_source_id": "REPORT-006",
+      "newer_source_id": "REPORT-007",
+      "change": "collapsed vs. damaged"
+    }
+  ],
+  "unverified_claims": [
+    {
+      "source_ids": ["REPORT-006"],
+      "claim": "200 people are trapped",
+      "verification_needed": "photo metadata"
+    }
+  ],
+  "people_count_ranges": ["14 families; qualify unverified claims", "18 log, 3 elderly; qualify unverified claims", "1B family, 3 old ppl; qualify unverified claims", "200 people; qualify unverified claims"],
+  "resource_gaps": [],
+  "capacity_pressure": ["80 - 43 = 37; existing registered count 67; relocation required"],
+  "calculation_checks": [
+    {
+      "label": "effective shelter capacity and overflow",
+      "source_ids": ["REPORT-009"],
+      "inputs": ["stated capacity 45", "current register 41", "unusable beds 12"],
+      "formula": "45 - 12 = 33; 41 - 33",
+      "result": 8
+    },
+    {
+      "label": "insulin dose shortfall range",
+      "source_ids": ["REPORT-011"],
+      "inputs": ["listed patients 19", "available doses 12", "possible duplicate patients 2"],
+      "formula": "19 - 12; (19 - 2) - 12",
+      "result": {"before_reconciliation": 7, "if_all_possible_duplicates_confirmed": 5}
+    },
+    {
+      "label": "safe-capacity overflow",
+      "source_ids": ["REPORT-020"],
+      "inputs": ["previous capacity 80", "safe capacity 43", "registered 67"],
+      "formula": "67 - 43",
+      "result": 24
+    }
+  ],
+  "route_constraints": ["north road blocked, south lane open to motorcycles and small vans"],
+  "cross_incident_dependencies": ["main bridge status affects rescue efforts"],
+  "do_not_merge_notes": ["do not combine reports with distinct explicit locations"],
+  "prioritized_operational_plan": [
+    {
+      "rank": 1,
+      "action": "reconcile duplicates",
+      "reason": "avoid double counting",
+      "dependency": "none",
+      "verify_before_action": "source verification"
+    },
+    {
+      "rank": 2,
+      "action": "identify life-safety cases",
+      "reason": "prioritize urgent needs",
+      "dependency": "none",
+      "verify_before_action": "source verification"
+    },
+    {
+      "rank": 3,
+      "action": "calculate shortages",
+      "reason": "resource allocation",
+      "dependency": "none",
+      "verify_before_action": "source verification"
+    },
+    {
+      "rank": 4,
+      "action": "propose review-required sequence",
+      "reason": "ensure accuracy",
+      "dependency": "none",
+      "verify_before_action": "source verification"
+    }
+  ],
+  "missing_information_questions": ["what is the exact location of the collapsed bridge?", "how many people are in the textile godown gate?"],
+  "coordinator_review_gates": ["verify all source reports before finalizing incidents"],
+  "confidence_notes": ["some claims are unverified; check for accuracy"],
+  "warnings": ["unverified claims exist; verify before acting"],
+  "quality_self_check": {
+    "all_sources_covered": true,
+    "numeric_facts_preserved": true,
+    "unsupported_resource_gaps_avoided": true,
+    "later_updates_preserved": true
+  },
+  "human_review_required": true
+}
