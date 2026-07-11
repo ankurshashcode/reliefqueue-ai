@@ -32,7 +32,7 @@ outputType = "webview"
 
 [deployment]
 build = "make replit-build"
-run = "make replit-run"
+run = ["bash", "scripts/replit_deploy_run.sh"]
 
 [[ports]]
 localPort = 5000
