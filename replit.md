@@ -43,6 +43,15 @@ database, queue, or AI provider. It resets whenever the server restarts.
 Nothing beyond this facade (PostGIS, Redis, NATS, auth, AI credentials) is
 required for it to run.
 
+The published app exposes one web port only. Browser API calls are same-origin, so no CORS configuration is required. Optional cross-origin development can set `RELIEFQUEUE_CORS_ORIGINS` to a comma-separated allowlist.
+
+User navigation is integrated in the product UI:
+- the complete Command Center sidebar remains available;
+- each role header provides a workspace switcher for Command Center, Field Coordinator, and Local Coordinator;
+- Field Coordinator has persistent My Work, My Cases, Outbox, and Help navigation;
+- case detail is reached by selecting a case card;
+- Capability Map consumes `/healthz` and `/api/product/command/overview` and shows human-readable runtime status instead of linking users to raw JSON.
+
 ## Project structure (do not restructure without asking)
 
 - `src/reliefqueue/` — Python backend: intake, triage, assignment, product

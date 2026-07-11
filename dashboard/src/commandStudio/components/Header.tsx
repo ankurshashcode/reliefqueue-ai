@@ -1,6 +1,7 @@
 import React from 'react';
 import { Bell, Plus, Settings, AlertTriangle, Database, Menu, Terminal } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { ProductRoleSwitcher } from '../../components/ProductRoleSwitcher';
 
 interface HeaderProps {
   onMenuClick: () => void;
@@ -31,7 +32,8 @@ export function Header({ onMenuClick }: HeaderProps) {
       </div>
 
       <div className="flex items-center gap-2 md:gap-4">
-        <div className="text-right mr-2 md:mr-4 hidden md:block">
+        <ProductRoleSwitcher currentRole="command" compact />
+        <div className="text-right mr-2 md:mr-4 hidden lg:block">
           <div className="text-xs font-medium text-slate-500">System Status</div>
           <div className="text-sm font-semibold text-rq-emerald">Nominal</div>
         </div>

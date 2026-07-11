@@ -892,6 +892,12 @@ SPA_ROUTE_PREFIXES = (
 
 
 def serve(host: str, port: int, root: Path = ROOT) -> int:
+    cors_origins = {
+        origin.strip()
+        for origin in os.environ.get("RELIEFQUEUE_CORS_ORIGINS", "").split(",")
+        if origin.strip()
+    }
+
     try:
         init_product_live_state(root)
     except Exception as exc:
@@ -914,8 +920,30 @@ def serve(host: str, port: int, root: Path = ROOT) -> int:
         def do_POST(self) -> None:  # noqa: N802
             self._handle("POST")
 
+        def do_OPTIONS(self) -> None:  # noqa: N802
+            route = urlparse(self.path).path.rstrip("/")
+            origin = self.headers.get("Origin", "")
+            if not route.startswith("/api/product/"):
+                self.send_error(404, "Not found")
+                return
+            if not origin or origin not in cors_origins:
+                self.send_error(403, "CORS origin not allowed")
+                return
+            self.send_response(204)
+            self._cors_headers()
+            self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+            self.send_header("Access-Control-Allow-Headers", "Content-Type")
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+
         def log_message(self, format: str, *args: Any) -> None:
             return
+
+        def _cors_headers(self) -> None:
+            origin = self.headers.get("Origin", "")
+            if origin and origin in cors_origins:
+                self.send_header("Access-Control-Allow-Origin", origin)
+                self.send_header("Vary", "Origin")
 
         def _handle(self, method: str) -> None:
             try:
@@ -939,7 +967,7 @@ def serve(host: str, port: int, root: Path = ROOT) -> int:
             raw = json.dumps(payload).encode("utf-8")
             self.send_response(status)
             self.send_header("Content-Type", "application/json; charset=utf-8")
-            self.send_header("Access-Control-Allow-Origin", "http://127.0.0.1:5173")
+            self._cors_headers()
             self.send_header("Content-Length", str(len(raw)))
             self.end_headers()
             self.wfile.write(raw)
@@ -947,7 +975,7 @@ def serve(host: str, port: int, root: Path = ROOT) -> int:
         def _bytes(self, status: int, payload: bytes) -> None:
             self.send_response(status)
             self.send_header("Content-Type", "application/octet-stream")
-            self.send_header("Access-Control-Allow-Origin", "http://127.0.0.1:5173")
+            self._cors_headers()
             self.send_header("Content-Length", str(len(payload)))
             self.end_headers()
             self.wfile.write(payload)

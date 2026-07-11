@@ -2,33 +2,11 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import './aiStudioTailwind.css';
 import './visualApps.css';
+import { viewForPath } from './commandStudio/types';
 
 const CommandStudioApp = React.lazy(() => import('./commandStudio/App'));
 const FieldStudioApp = React.lazy(() => import('./fieldStudio/App'));
 const LocalCoordinatorApp = React.lazy(() => import('./localStudio/App'));
-
-const commandRouteToView: Record<string, string> = {
-  '/': 'overview',
-  '/dashboard': 'overview',
-  '/dashboard/overview': 'overview',
-  '/dashboard/map': 'map',
-  '/dashboard/assignments': 'assignments',
-  '/dashboard/workload': 'workload',
-  '/dashboard/field-sync': 'sync',
-  '/dashboard/scenario': 'scenario',
-  '/dashboard/ai-control': 'aicontrol',
-  '/dashboard/ai-control/test': 'aicontrol',
-  '/dashboard/ai-control/confirm-change': 'aicontrol',
-  '/dashboard/quality': 'quality',
-  '/dashboard/audit': 'audit',
-  '/dashboard/troubleshooting': 'audit',
-  '/dashboard/intake': 'intake',
-  '/dashboard/incident-links': 'links',
-  '/dashboard/amd-impact': 'amd',
-  '/dashboard/capability-map': 'capabilities',
-  '/internal/classic-dashboard': 'overview',
-  '/internal/classic-dashboard?source=latest': 'overview'
-};
 
 function routeLabel(path: string) {
   if (path.startsWith('/field')) return 'Field Coordinator mobile app';
@@ -117,7 +95,7 @@ function RootApp() {
       </React.Suspense>
     );
   }
-  const initialView = commandRouteToView[path] || 'overview';
+  const initialView = viewForPath(path);
   const internalClassic = path.startsWith('/internal/classic-dashboard');
   return (
     <React.Suspense fallback={<LoadingShell />}>

@@ -1,6 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Server, CheckCircle, Smartphone, Map, HardDrive, Cpu, ShieldCheck } from 'lucide-react';
-import { config } from '../lib/publicConfig';
 import { useApp } from '../context/AppContext';
 
 const CAPABILITIES = [
@@ -40,6 +39,39 @@ const CAPABILITIES = [
 
 export function CapabilityMap() {
   const { showToast } = useApp();
+  const [runtime, setRuntime] = useState({
+    loading: true,
+    health: 'Checking',
+    api: 'Checking',
+    contract: 'Unknown',
+    cases: 0,
+  });
+
+  const refreshRuntimeStatus = async (announce = false) => {
+    setRuntime((current) => ({ ...current, loading: true }));
+    try {
+      const [healthResponse, overviewResponse] = await Promise.all([
+        fetch('/healthz', { cache: 'no-store' }),
+        fetch('/api/product/command/overview', { cache: 'no-store' }),
+      ]);
+      if (!healthResponse.ok || !overviewResponse.ok) throw new Error(`HTTP ${healthResponse.status}/${overviewResponse.status}`);
+      const health = await healthResponse.json();
+      const overview = await overviewResponse.json();
+      setRuntime({
+        loading: false,
+        health: health.status === 'ok' ? 'Passing' : 'Degraded',
+        api: 'Connected',
+        contract: String(overview.contract || 'reliefqueue-product-api/v1'),
+        cases: Number(overview.summary?.total_cases || 0),
+      });
+      if (announce) showToast('Product API and health status refreshed.', 'success');
+    } catch (error: any) {
+      setRuntime({ loading: false, health: 'Unavailable', api: 'Unavailable', contract: 'Unavailable', cases: 0 });
+      if (announce) showToast(`Runtime status unavailable: ${error.message}`, 'error');
+    }
+  };
+
+  useEffect(() => { void refreshRuntimeStatus(false); }, []);
 
   return (
     <div className="p-4 md:p-6 lg:p-8 max-w-[1600px] mx-auto h-full overflow-y-auto">
@@ -60,12 +92,13 @@ export function CapabilityMap() {
           </ul>
           <div className="mt-4 flex flex-col xl:flex-row gap-4">
             <div className="flex-1 p-4 bg-slate-800 rounded text-sm text-slate-300 font-mono leading-relaxed">
-              <strong className="text-white block mb-2 font-sans">Preview Status:</strong>
-              Data Source: Synthetic replay<br/>
-              API Base URL: Preview not connected<br/>
-              API Mode: Deterministic fallback active<br/>
-              AMD/vLLM Endpoint: Not connected in this preview<br/>
-              Secrets in Browser: None exposed
+              <strong className="text-white block mb-2 font-sans">Published Runtime Status:</strong>
+              Product API: {runtime.api}<br/>
+              Health check: {runtime.health}<br/>
+              API Base URL: Same origin<br/>
+              API Contract: {runtime.contract}<br/>
+              Demo cases loaded: {runtime.cases}<br/>
+              State persistence: Ephemeral
             </div>
             <div className="flex-1 p-4 bg-slate-800 rounded text-sm text-slate-300 font-mono leading-relaxed">
               <strong className="text-white block mb-2 font-sans">Live Demo Target:</strong>
@@ -84,8 +117,8 @@ export function CapabilityMap() {
           <button onClick={() => showToast('Configuration checked.', 'info')} className="px-4 py-2 bg-slate-800 border border-slate-700 rounded text-sm hover:bg-slate-700 transition-colors w-full text-left">
             Check Public Config
           </button>
-          <button onClick={() => showToast('Product API test initiated.', 'info')} className="px-4 py-2 bg-slate-800 border border-slate-700 rounded text-sm hover:bg-slate-700 transition-colors w-full text-left">
-            Test Product API
+          <button onClick={() => void refreshRuntimeStatus(true)} disabled={runtime.loading} className="px-4 py-2 bg-slate-800 border border-slate-700 rounded text-sm hover:bg-slate-700 transition-colors w-full text-left">
+            {runtime.loading ? 'Checking Runtime Status...' : 'Refresh Runtime Status'}
           </button>
           <button onClick={() => showToast('AMD/vLLM path simulated.', 'info')} className="px-4 py-2 bg-slate-800 border border-slate-700 rounded text-sm hover:bg-slate-700 transition-colors w-full text-left">
             Test AMD/vLLM Advisory Path
