@@ -1,6 +1,18 @@
 import { useEffect, useState } from 'react';
-import { Server, CheckCircle, Smartphone, Map, HardDrive, Cpu, ShieldCheck } from 'lucide-react';
+import { Server, CheckCircle, ShieldCheck, Zap, RefreshCw, Hash, Clock } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+
+interface AmdTestResult {
+  verified_live: boolean;
+  fallback_used: boolean;
+  request_id: string | null;
+  verified_at: string | null;
+  latency_ms: number | null;
+  underlying_model: string | null;
+  served_model: string | null;
+  generated_advisory: string | null;
+  error: string | null;
+}
 
 const CAPABILITIES = [
   { group: 'Command & Triage', items: [
@@ -25,8 +37,9 @@ const CAPABILITIES = [
     { name: 'Session Me', endpoint: 'GET /api/product/session/me', status: 'wired', safe: true },
     { name: 'Evidence & Redaction Review', endpoint: 'GET /api/product/evidence', status: 'wired', safe: true },
     { name: 'Monitoring', endpoint: 'GET /api/product/monitoring', status: 'report-only', safe: true },
-    { name: 'AMD / vLLM Status', endpoint: 'AMD benchmark reports', status: 'report-only', safe: true },
-    { name: 'Gemma 4 Bonus Lane', endpoint: 'Validation pending via backend', status: 'validation pending', safe: true },
+    { name: 'AMD / vLLM Live Verification', endpoint: 'POST /api/ai/live-verification', status: 'wired', safe: true },
+    { name: 'AMD Burst Workload', endpoint: 'POST /api/ai/burst-verification', status: 'wired', safe: true },
+    { name: 'Gemma 4 Bonus Lane', endpoint: 'Experimental — not active in this deployment', status: 'experimental', safe: true },
     { name: 'Production Config', endpoint: 'GET /api/product/production/config', status: 'wired', safe: true },
   ]},
   { group: 'Local Operations (Scenario)', items: [
@@ -46,6 +59,8 @@ export function CapabilityMap() {
     contract: 'Unknown',
     cases: 0,
   });
+  const [amdTestLoading, setAmdTestLoading] = useState(false);
+  const [amdTestResult, setAmdTestResult] = useState<AmdTestResult | null>(null);
 
   const refreshRuntimeStatus = async (announce = false) => {
     setRuntime((current) => ({ ...current, loading: true }));
@@ -71,65 +86,151 @@ export function CapabilityMap() {
     }
   };
 
+  const testAmdPath = async () => {
+    setAmdTestLoading(true);
+    setAmdTestResult(null);
+    try {
+      const res = await fetch('/api/ai/live-verification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const data: AmdTestResult = await res.json();
+      setAmdTestResult(data);
+    } catch (err: any) {
+      setAmdTestResult({
+        verified_live: false,
+        fallback_used: true,
+        request_id: null,
+        verified_at: null,
+        latency_ms: null,
+        underlying_model: null,
+        served_model: null,
+        generated_advisory: null,
+        error: err?.message || 'Network request failed',
+      });
+    } finally {
+      setAmdTestLoading(false);
+    }
+  };
+
+  const checkPublicConfig = async () => {
+    try {
+      const res = await fetch('/api/product/production/config', { cache: 'no-store' });
+      const data = await res.json();
+      showToast(`Config: ${data.cors_mode || 'ok'} · HTTPS expected: ${data.https_expected}`, 'info');
+    } catch {
+      showToast('Public config check failed.', 'error');
+    }
+  };
+
   useEffect(() => { void refreshRuntimeStatus(false); }, []);
+
+  const amdVerified = amdTestResult?.verified_live === true && amdTestResult?.fallback_used === false;
 
   return (
     <div className="p-4 md:p-6 lg:p-8 max-w-[1600px] mx-auto h-full overflow-y-auto">
       <div className="mb-6">
         <h2 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">Capability Map & Readiness</h2>
-        <p className="text-slate-500 mt-2">API surface wiring and demo deployment boundary.</p>
+        <p className="text-slate-500 mt-2">API surface wiring and live deployment status.</p>
       </div>
 
-      <div className="bg-slate-900 rounded-xl p-5 md:p-6 text-white mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h3 className="font-bold text-lg mb-1 flex items-center gap-2">
-            <Server className="w-5 h-5 text-emerald-400" /> Platform Deployment Notes
+      <div className="bg-slate-900 rounded-xl p-5 md:p-6 text-white mb-8 flex flex-col md:flex-row justify-between items-start gap-4">
+        <div className="flex-1 min-w-0">
+          <h3 className="font-bold text-lg mb-3 flex items-center gap-2">
+            <Server className="w-5 h-5 text-emerald-400" /> Live Deployment Status
           </h3>
-          <ul className="text-slate-400 text-sm max-w-3xl list-disc pl-5 mt-2 space-y-1">
-            <li><strong className="text-white">Replit Full-Stack (Recommended):</strong> Best for running this React frontend alongside the Python backend in one workspace.</li>
-            <li><strong className="text-white">Vercel:</strong> Frontend-only hosting. Requires the Python API to be hosted elsewhere and configured via API origin.</li>
-            <li><strong className="text-white">Streamlit:</strong> Python-only alternate UI; does not apply to this React application.</li>
-          </ul>
-          <div className="mt-4 flex flex-col xl:flex-row gap-4">
-            <div className="flex-1 p-4 bg-slate-800 rounded text-sm text-slate-300 font-mono leading-relaxed">
-              <strong className="text-white block mb-2 font-sans">Published Runtime Status:</strong>
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+            <div className="p-4 bg-slate-800 rounded text-sm text-slate-300 font-mono leading-relaxed">
+              <strong className="text-white block mb-2 font-sans">Runtime Status:</strong>
+              Application: ReliefQueue AI<br/>
               Product API: {runtime.api}<br/>
               Health check: {runtime.health}<br/>
-              API Base URL: Same origin<br/>
-              API Contract: {runtime.contract}<br/>
-              Demo cases loaded: {runtime.cases}<br/>
-              State persistence: Ephemeral
+              API origin: Same origin<br/>
+              Contract: {runtime.contract}<br/>
+              Demo cases loaded: {runtime.cases}
             </div>
-            <div className="flex-1 p-4 bg-slate-800 rounded text-sm text-slate-300 font-mono leading-relaxed">
-              <strong className="text-white block mb-2 font-sans">Live Demo Target:</strong>
-              Backend API: ReliefQueue /api/product<br/>
-              AI Inference: AMD GPU / vLLM via backend<br/>
-              Endpoint Type: OpenAI-compatible<br/>
-              Human Review: Always required<br/>
-              Fallback: Deterministic queue retained if inference fails
+            <div className="p-4 bg-slate-800 rounded text-sm text-slate-300 font-mono leading-relaxed">
+              <strong className="text-white block mb-2 font-sans">AI Provider:</strong>
+              AI provider: AMD Developer Cloud<br/>
+              Accelerator: AMD Instinct MI300X<br/>
+              Runtime: vLLM 0.23.0<br/>
+              Active model: Qwen/Qwen2.5-7B-Instruct<br/>
+              Served model: reliefqueue-amd<br/>
+              Human review: Required<br/>
+              Fallback: Deterministic fallback available
             </div>
           </div>
-          <div className="mt-4 p-3 bg-slate-800 border-l-2 border-emerald-400 text-sm text-slate-300">
-            The AI Studio preview uses local deterministic fallback. The deployed demo can connect the same frontend to the ReliefQueue backend and AMD/vLLM inference endpoint without exposing secrets in the browser.
-          </div>
+
+          {/* AMD test result panel */}
+          {amdTestResult && (
+            <div className={`mt-4 p-4 rounded border text-sm font-mono ${amdVerified ? 'bg-emerald-900/40 border-emerald-500' : 'bg-red-900/30 border-red-500'}`}>
+              <div className={`font-black font-sans text-base mb-2 flex items-center gap-2 ${amdVerified ? 'text-emerald-300' : 'text-red-300'}`}>
+                {amdVerified ? '✓ AMD/vLLM PATH VERIFIED LIVE' : '✗ AMD/vLLM PATH — FALLBACK ACTIVE'}
+              </div>
+              <div className="grid grid-cols-1 gap-0.5 text-slate-300 text-xs">
+                {amdTestResult.request_id && (
+                  <div className="flex items-center gap-1.5"><Hash className="w-3 h-3 text-slate-500" /> Request ID: <span className="text-white">{amdTestResult.request_id}</span></div>
+                )}
+                {amdTestResult.verified_at && (
+                  <div className="flex items-center gap-1.5"><Clock className="w-3 h-3 text-slate-500" /> Timestamp: <span className="text-white">{amdTestResult.verified_at}</span></div>
+                )}
+                {amdTestResult.latency_ms != null && (
+                  <div className="flex items-center gap-1.5"><Zap className="w-3 h-3 text-slate-500" /> Latency: <span className="text-white">{amdTestResult.latency_ms} ms</span></div>
+                )}
+                <div>Model: <span className="text-white">{amdTestResult.underlying_model || '—'}</span></div>
+                <div>Served as: <span className="text-white">{amdTestResult.served_model || '—'}</span></div>
+                <div>Fallback used: <span className={amdTestResult.fallback_used ? 'text-red-300' : 'text-emerald-300'}>{amdTestResult.fallback_used ? 'Yes' : 'No'}</span></div>
+              </div>
+              {amdTestResult.generated_advisory && (
+                <div className="mt-2">
+                  <div className="text-[10px] font-sans font-bold text-slate-400 uppercase tracking-wider mb-1">Generated Advisory (excerpt)</div>
+                  <div className="bg-slate-700 rounded p-2 text-slate-200 font-sans leading-relaxed text-xs">
+                    {amdTestResult.generated_advisory.slice(0, 300)}{amdTestResult.generated_advisory.length > 300 ? '…' : ''}
+                  </div>
+                </div>
+              )}
+              {amdTestResult.error && (
+                <div className="mt-2 text-red-300 font-sans text-xs">{amdTestResult.error}</div>
+              )}
+            </div>
+          )}
         </div>
-        <div className="flex flex-col gap-2 w-full md:w-auto shrink-0">
-          <button onClick={() => showToast('Configuration checked.', 'info')} className="px-4 py-2 bg-slate-800 border border-slate-700 rounded text-sm hover:bg-slate-700 transition-colors w-full text-left">
+
+        <div className="flex flex-col gap-2 w-full md:w-48 shrink-0">
+          <button
+            onClick={() => void checkPublicConfig()}
+            className="px-4 py-2 bg-slate-800 border border-slate-700 rounded text-sm hover:bg-slate-700 transition-colors w-full text-left"
+          >
             Check Public Config
           </button>
-          <button onClick={() => void refreshRuntimeStatus(true)} disabled={runtime.loading} className="px-4 py-2 bg-slate-800 border border-slate-700 rounded text-sm hover:bg-slate-700 transition-colors w-full text-left">
-            {runtime.loading ? 'Checking Runtime Status...' : 'Refresh Runtime Status'}
+          <button
+            onClick={() => void refreshRuntimeStatus(true)}
+            disabled={runtime.loading}
+            className="px-4 py-2 bg-slate-800 border border-slate-700 rounded text-sm hover:bg-slate-700 transition-colors w-full text-left disabled:opacity-60"
+          >
+            {runtime.loading ? (
+              <span className="flex items-center gap-1.5"><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Checking…</span>
+            ) : 'Refresh Runtime Status'}
           </button>
-          <button onClick={() => showToast('AMD/vLLM path simulated.', 'info')} className="px-4 py-2 bg-slate-800 border border-slate-700 rounded text-sm hover:bg-slate-700 transition-colors w-full text-left">
-            Test AMD/vLLM Advisory Path
+          <button
+            onClick={() => void testAmdPath()}
+            disabled={amdTestLoading}
+            className="px-4 py-2 bg-emerald-700 border border-emerald-600 text-white rounded text-sm hover:bg-emerald-600 transition-colors w-full text-left font-semibold disabled:opacity-60"
+          >
+            {amdTestLoading ? (
+              <span className="flex items-center gap-1.5"><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Contacting AMD…</span>
+            ) : 'Test AMD/vLLM Advisory Path'}
           </button>
-          <button onClick={() => showToast('Fallback mode active.', 'info')} className="px-4 py-2 bg-slate-800 border border-slate-700 rounded text-sm hover:bg-slate-700 transition-colors w-full text-left">
-            Show Fallback Behavior
-          </button>
-          <button onClick={() => {
-            navigator.clipboard.writeText("ReliefQueue uses synthetic/replayed disaster intake, deterministic logistics, AMD GPU/vLLM advisory inference when configured, Gemma 4 as a bonus reasoning lane, and human coordinator review for safe field action.");
-            showToast('Reviewer notes copied to clipboard.', 'success');
-          }} className="px-4 py-2 bg-emerald-600 text-white rounded text-sm hover:bg-emerald-700 transition-colors w-full text-left font-semibold">
+          <button
+            onClick={() => {
+              const text = 'AI_MODE=openai_compatible\nProvider: AMD Developer Cloud\nAccelerator: AMD Instinct MI300X\nRuntime: vLLM 0.23.0\nActive model: Qwen/Qwen2.5-7B-Instruct\nServed model: reliefqueue-amd\nHuman review: Required\nFallback: Deterministic available';
+              navigator.clipboard.writeText(text).then(
+                () => showToast('Reviewer notes copied.', 'success'),
+                () => showToast('Copy failed.', 'error')
+              );
+            }}
+            className="px-4 py-2 bg-slate-800 border border-slate-700 rounded text-sm hover:bg-slate-700 transition-colors w-full text-left"
+          >
             Copy Reviewer Notes
           </button>
         </div>
@@ -147,7 +248,7 @@ export function CapabilityMap() {
                     {item.status === 'wired' && <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-bold uppercase rounded border border-emerald-200">Wired</span>}
                     {item.status === 'demo fallback' && <span className="px-2 py-0.5 bg-amber-50 text-amber-700 text-[10px] font-bold uppercase rounded border border-amber-200">Fallback</span>}
                     {item.status === 'report-only' && <span className="px-2 py-0.5 bg-blue-50 text-blue-700 text-[10px] font-bold uppercase rounded border border-blue-200">Report</span>}
-                    {item.status === 'validation pending' && <span className="px-2 py-0.5 bg-purple-50 text-purple-700 text-[10px] font-bold uppercase rounded border border-purple-200">Validation Pending</span>}
+                    {item.status === 'experimental' && <span className="px-2 py-0.5 bg-purple-50 text-purple-700 text-[10px] font-bold uppercase rounded border border-purple-200">Experimental</span>}
                   </div>
                   <div className="text-[10px] font-mono text-slate-500 bg-slate-50 p-1.5 rounded border border-slate-100 break-all mb-3">
                     {item.endpoint}
@@ -162,6 +263,14 @@ export function CapabilityMap() {
             </div>
           </section>
         ))}
+      </div>
+
+      {/* Verification summary row */}
+      <div className="mt-8 p-4 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-3">
+        <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0" />
+        <p className="text-sm text-emerald-800">
+          <strong>Safety boundary intact:</strong> All endpoints preserve synthetic-only data, human_review_required=true, no autonomous field dispatch, and API key server-side only.
+        </p>
       </div>
     </div>
   );

@@ -57,6 +57,7 @@ FORBIDDEN_WORDING = [
     "definitely safe",
 ]
 PHONE_RE = re.compile(r"\+?\d[\d\s().-]{8,}\d")
+EMAIL_RE = re.compile(r"\b[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}\b")
 
 
 class AIValidationError(ValueError):
@@ -400,6 +401,117 @@ class OpenAICompatibleAdapter:
             "human_review_required": True,
             "synthetic_input": synthetic_case["safe_summary"],
             "generated_advisory": generated_advisory,
+            "warnings": ["Human coordinator review required before any field action."],
+            "error": None,
+        }
+
+    def verify_user_input(self, user_text: str, case_id: str = "JUDGE-INPUT") -> dict[str, Any]:
+        """Run live inference on user-provided text for judge verification.
+
+        Sanitizes input (phone/email redacted), runs real AMD/vLLM inference.
+        Never exposes API key. Returns evidence dict with challenge_nonce.
+        """
+        missing = self.config.missing_openai_env()
+        if missing:
+            result = _live_verify_failure("Missing required env: " + ", ".join(missing))
+            result.update({"challenge_nonce": None, "original_input": user_text[:500], "sanitized_input": None, "case_id": case_id, "raw_content": None})
+            return result
+
+        # Sanitize: redact phone numbers and email addresses
+        sanitized = PHONE_RE.sub("[phone-redacted]", user_text)
+        sanitized = EMAIL_RE.sub("[email-redacted]", sanitized)
+        sanitized = sanitized[:4000]  # practical limit for 8192-token context
+
+        nonce = os.urandom(8).hex()
+
+        case_record: dict[str, Any] = {
+            "case_id": case_id,
+            "safe_summary": sanitized,
+            "need_type": "unknown",
+            "urgency": "AMBER",
+            "missing_fields": [],
+            "language_hint": "en",
+            "operation_zone_id": "judge-demo",
+            "vulnerable_flags": [],
+        }
+
+        body = self._build_request(case_record)
+        url = self.config.base_url.rstrip("/") + "/chat/completions"
+        encoded = json.dumps(body).encode("utf-8")
+
+        start = time.time()
+        try:
+            request = urllib.request.Request(
+                url,
+                data=encoded,
+                headers=self._request_headers(),
+                method="POST",
+            )
+            with urllib.request.urlopen(request, timeout=self.config.timeout_seconds) as response:
+                latency_ms = round((time.time() - start) * 1000)
+                raw = response.read().decode("utf-8")
+            data = json.loads(raw)
+        except (TimeoutError, socket.timeout) as exc:
+            result = _live_verify_failure(f"timeout: {exc}")
+            result.update({"challenge_nonce": nonce, "original_input": user_text[:500], "sanitized_input": sanitized, "case_id": case_id, "raw_content": None})
+            return result
+        except urllib.error.HTTPError as exc:
+            result = _live_verify_failure(f"HTTP {exc.code}: {_read_http_error_body(exc)}")
+            result.update({"challenge_nonce": nonce, "original_input": user_text[:500], "sanitized_input": sanitized, "case_id": case_id, "raw_content": None})
+            return result
+        except (urllib.error.URLError, KeyError, IndexError, json.JSONDecodeError, OSError) as exc:
+            result = _live_verify_failure(f"provider_error: {exc}")
+            result.update({"challenge_nonce": nonce, "original_input": user_text[:500], "sanitized_input": sanitized, "case_id": case_id, "raw_content": None})
+            return result
+        except Exception as exc:
+            result = _live_verify_failure(f"unexpected_error: {exc}")
+            result.update({"challenge_nonce": nonce, "original_input": user_text[:500], "sanitized_input": sanitized, "case_id": case_id, "raw_content": None})
+            return result
+
+        request_id = str(data.get("id") or "")
+        served_model = str(data.get("model") or self.config.model)
+        usage = data.get("usage") or {}
+        prompt_tokens = int(usage.get("prompt_tokens") or 0)
+        completion_tokens = int(usage.get("completion_tokens") or 0)
+        total_tokens = int(usage.get("total_tokens") or 0)
+
+        try:
+            content = data["choices"][0]["message"]["content"]
+        except (KeyError, IndexError, TypeError):
+            result = _live_verify_failure("provider returned unexpected response shape")
+            result.update({"challenge_nonce": nonce, "original_input": user_text[:500], "sanitized_input": sanitized, "case_id": case_id, "raw_content": None})
+            return result
+
+        # Try to extract clean advisory; do not fail verified_live on validation errors
+        generated_advisory = content[:500] if content else ""
+        try:
+            parsed = parse_ai_json(content)
+            generated_advisory = (parsed.get("operator_note") or parsed.get("safe_summary") or content[:500]).strip()
+        except Exception:
+            pass
+
+        return {
+            "status": "ok",
+            "verified_live": True,
+            "provider": "AMD Developer Cloud",
+            "runtime": "vLLM 0.23.0",
+            "accelerator": "AMD Instinct MI300X",
+            "served_model": served_model,
+            "underlying_model": "Qwen/Qwen2.5-7B-Instruct",
+            "request_id": request_id,
+            "challenge_nonce": nonce,
+            "verified_at": None,  # caller fills in
+            "latency_ms": latency_ms,
+            "prompt_tokens": prompt_tokens,
+            "completion_tokens": completion_tokens,
+            "total_tokens": total_tokens,
+            "fallback_used": False,
+            "human_review_required": True,
+            "case_id": case_id,
+            "original_input": user_text[:500],
+            "sanitized_input": sanitized,
+            "generated_advisory": generated_advisory,
+            "raw_content": content[:1000],
             "warnings": ["Human coordinator review required before any field action."],
             "error": None,
         }

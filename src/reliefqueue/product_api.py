@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import base64
+import concurrent.futures
 import hashlib
 import json
 import mimetypes
@@ -1116,15 +1117,22 @@ def _route(method: str, path: str, body: dict[str, Any]) -> dict[str, Any]:
     if method == "POST" and route == "/api/product/local/scenario":
         return update_local_scenario(body)
     if method == "POST" and route == "/api/ai/live-verification":
-        return live_verification()
+        return live_verification(body)
+    if method == "POST" and route == "/api/ai/burst-verification":
+        return burst_verification(body)
     raise ProductApiError(404, f"unknown product API route: {route}")
 
 
-def live_verification() -> dict[str, Any]:
+BURST_MAX_CASES = 24
+BURST_VALID_CONCURRENCY = {1, 2, 4, 6, 8}
+
+
+def live_verification(body: dict[str, Any] | None = None) -> dict[str, Any]:
     """POST /api/ai/live-verification — real inference request for judge evidence.
 
     Contacts the configured AMD Developer Cloud / vLLM endpoint with
-    synthetic privacy-safe input. Never returns the API key or secret headers.
+    synthetic privacy-safe input (or judge-provided text if body["text"] is set).
+    Never returns the API key or secret headers.
     """
     import datetime as _dt
     config = AIConfig.from_env()
@@ -1138,6 +1146,7 @@ def live_verification() -> dict[str, Any]:
             "served_model": None,
             "underlying_model": "Qwen/Qwen2.5-7B-Instruct",
             "request_id": None,
+            "challenge_nonce": None,
             "verified_at": _dt.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
             "latency_ms": None,
             "prompt_tokens": None,
@@ -1151,9 +1160,131 @@ def live_verification() -> dict[str, Any]:
             "error": f"AI_MODE={config.mode!r}; set AI_MODE=openai_compatible and configure OPENAI_COMPAT_* to enable live verification.",
         }
     adapter = OpenAICompatibleAdapter(config)
-    result = adapter.live_verify()
+    user_text = str((body or {}).get("text") or "").strip()
+    if user_text:
+        result = adapter.verify_user_input(user_text, case_id="JUDGE-SINGLE")
+    else:
+        result = adapter.live_verify()
+        # Add nonce to standard live_verify result for consistency
+        if "challenge_nonce" not in result:
+            result["challenge_nonce"] = os.urandom(8).hex() if result.get("verified_live") else None
     result["verified_at"] = _dt.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
     return result
+
+
+def burst_verification(body: dict[str, Any]) -> dict[str, Any]:
+    """POST /api/ai/burst-verification — concurrent live AMD/vLLM requests.
+
+    Accepts up to BURST_MAX_CASES reports with bounded concurrency.
+    Never accepts endpoint, API key, or model overrides from the browser.
+    """
+    import datetime as _dt
+    reports_raw = body.get("reports", [])
+    concurrency = int(body.get("concurrency", 4))
+
+    if not isinstance(reports_raw, list) or len(reports_raw) == 0:
+        raise ProductApiError(400, "reports must be a non-empty array")
+    if len(reports_raw) > BURST_MAX_CASES:
+        raise ProductApiError(400, f"Too many cases: {len(reports_raw)} exceeds maximum of {BURST_MAX_CASES}")
+    if concurrency not in BURST_VALID_CONCURRENCY:
+        raise ProductApiError(400, f"concurrency must be one of {sorted(BURST_VALID_CONCURRENCY)}")
+
+    config = AIConfig.from_env()
+    if config.mode != "openai_compatible":
+        raise ProductApiError(400, f"AI_MODE={config.mode!r}; burst verification requires openai_compatible mode with AMD endpoint configured")
+
+    adapter = OpenAICompatibleAdapter(config)
+    batch_id = "batch-" + hashlib.sha256(f"{time.time()}:{os.urandom(8).hex()}".encode()).hexdigest()[:12]
+    started_at = _dt.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    # Normalize reports — accept str, or dict with id+text
+    normalized: list[dict[str, str]] = []
+    for i, report in enumerate(reports_raw):
+        if isinstance(report, str):
+            normalized.append({"case_id": f"case-{i + 1}", "text": report})
+        elif isinstance(report, dict):
+            normalized.append({
+                "case_id": str(report.get("id") or f"case-{i + 1}"),
+                "text": str(report.get("text") or ""),
+            })
+        else:
+            raise ProductApiError(400, f"Invalid report format at index {i}: expected string or object with 'text'")
+
+    overall_start = time.time()
+
+    def run_one(rep: dict[str, str]) -> dict[str, Any]:
+        result = adapter.verify_user_input(rep["text"], case_id=rep["case_id"])
+        result["case_id"] = rep["case_id"]
+        result["verified_at"] = _dt.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+        return result
+
+    case_results: list[dict[str, Any]] = []
+    with concurrent.futures.ThreadPoolExecutor(max_workers=concurrency) as executor:
+        futures = {executor.submit(run_one, r): r for r in normalized}
+        for future in concurrent.futures.as_completed(futures):
+            try:
+                case_results.append(future.result())
+            except Exception as exc:
+                rep = futures[future]
+                case_results.append({
+                    "case_id": rep["case_id"],
+                    "status": "failed",
+                    "verified_live": False,
+                    "fallback_used": True,
+                    "human_review_required": True,
+                    "error": str(exc),
+                    "challenge_nonce": None,
+                    "request_id": None,
+                    "verified_at": _dt.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+                    "latency_ms": None,
+                    "prompt_tokens": None,
+                    "completion_tokens": None,
+                    "total_tokens": None,
+                    "generated_advisory": None,
+                    "warnings": [str(exc)],
+                })
+
+    total_elapsed = round((time.time() - overall_start) * 1000)
+    completed_at = _dt.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    # Aggregate stats
+    succeeded = sum(1 for r in case_results if r.get("verified_live") is True and not r.get("fallback_used"))
+    failed_count = sum(1 for r in case_results if not r.get("verified_live"))
+    fallback_responses = sum(1 for r in case_results if r.get("fallback_used"))
+    latencies = sorted(r["latency_ms"] for r in case_results if r.get("latency_ms") is not None)
+    median_latency = latencies[len(latencies) // 2] if latencies else None
+    p95_latency = latencies[max(0, int(len(latencies) * 0.95) - 1)] if latencies else None
+    total_prompt = sum(r.get("prompt_tokens") or 0 for r in case_results)
+    total_completion = sum(r.get("completion_tokens") or 0 for r in case_results)
+    total_tokens = sum(r.get("total_tokens") or 0 for r in case_results)
+    throughput = round(len(case_results) / max(total_elapsed / 1000, 0.001), 2)
+
+    case_results.sort(key=lambda r: str(r.get("case_id", "")))
+
+    return {
+        "status": "ok",
+        "batch_id": batch_id,
+        "started_at": started_at,
+        "completed_at": completed_at,
+        "submitted": len(normalized),
+        "succeeded": succeeded,
+        "failed": failed_count,
+        "live_amd_responses": succeeded,
+        "fallback_responses": fallback_responses,
+        "total_elapsed_ms": total_elapsed,
+        "median_latency_ms": median_latency,
+        "p95_latency_ms": p95_latency,
+        "prompt_tokens": total_prompt,
+        "completion_tokens": total_completion,
+        "total_tokens": total_tokens,
+        "approximate_throughput_rps": throughput,
+        "active_model": "Qwen/Qwen2.5-7B-Instruct",
+        "served_model": "reliefqueue-amd",
+        "runtime": "vLLM 0.23.0",
+        "accelerator": "AMD Instinct MI300X",
+        "human_review_required": True,
+        "cases": case_results,
+    }
 
 
 def local_scenario() -> dict[str, Any]:

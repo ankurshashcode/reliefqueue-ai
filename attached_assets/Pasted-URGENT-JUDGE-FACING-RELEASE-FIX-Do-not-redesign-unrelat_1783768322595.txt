@@ -1,0 +1,452 @@
+URGENT JUDGE-FACING RELEASE FIX
+
+Do not redesign unrelated pages. Preserve the existing real AMD Developer Cloud/vLLM connection, deployment secrets, safety boundaries, and current navigation.
+
+Implement the following three changes.
+
+============================================================
+1. REMOVE “AMD GPU — PENDING VERIFICATION”
+============================================================
+
+On the AMD Impact page, remove the card/text:
+
+  AMD GPU
+  Pending Verification
+  AMD Instinct MI300X
+
+Do not replace it with another static “pending”, “unverified”, or placeholder label.
+
+Replace that card with factual infrastructure information:
+
+  AMD ACCELERATOR
+  AMD Instinct MI300X
+  Provider: AMD Developer Cloud
+
+The judge-facing infrastructure cards should truthfully display:
+
+  Inference Mode:
+    Live AMD/vLLM when the most recent request succeeded without fallback
+    Deterministic fallback only when the most recent request actually used fallback
+
+  AMD Accelerator:
+    AMD Instinct MI300X
+    Provider: AMD Developer Cloud
+
+  Runtime:
+    vLLM 0.23.0
+    OpenAI-compatible backend
+
+  Active Model:
+    Qwen/Qwen2.5-7B-Instruct
+    Served as: reliefqueue-amd
+
+  Data Safety:
+    Synthetic input only
+    Private text sent: false
+    Secret values exposed: false
+
+  Human Review:
+    Required
+    No autonomous dispatch
+
+Live verification state must be shown only in the real verification result panel:
+
+  VERIFIED LIVE
+  Last verified: <UTC timestamp>
+  Request ID: <actual vLLM request id>
+
+Only show VERIFIED LIVE after a fresh successful provider request where:
+- fallback_used is false,
+- the real configured provider responded,
+- an actual request ID exists,
+- generated output is non-empty.
+
+On initial page load, do not show “Pending Verification”.
+Instead show a neutral button/prompt:
+
+  Run a live request to generate fresh verification evidence.
+
+A failed request must remove any previous VERIFIED LIVE state.
+
+Search the frontend and backend for all visible occurrences of:
+- Pending Verification
+- AMD GPU Pending Verification
+- Default Model
+- placeholder evidence
+
+Remove or replace them consistently.
+
+============================================================
+2. SIMPLIFY CAPABILITY MAP
+============================================================
+
+Remove this complete explanatory block from the top of Capability Map:
+
+  Replit Full-Stack (Recommended): Best for running this React frontend alongside the Python backend in one workspace.
+  Vercel: Frontend-only hosting. Requires the Python API to be hosted elsewhere and configured via API origin.
+  Streamlit: Python-only alternate UI; does not apply to this React application.
+
+Do not replace it with platform comparison or deployment advice.
+
+Rename the section from:
+
+  Platform Deployment Notes
+
+to:
+
+  Live Deployment Status
+
+Keep only useful judge-facing runtime information, such as:
+
+  Application: ReliefQueue AI
+  Deployment: Public Replit application
+  Product API: Connected
+  Health check: Passing
+  API origin: Same origin
+  AI provider: AMD Developer Cloud
+  Accelerator: AMD Instinct MI300X
+  Runtime: vLLM 0.23.0
+  Active model: Qwen/Qwen2.5-7B-Instruct
+  Served model: reliefqueue-amd
+  Human review: Required
+  Fallback: Deterministic fallback available
+
+Keep the existing functional controls only where they produce meaningful visible results:
+- Check Public Config
+- Refresh Runtime Status
+- Test AMD/vLLM Advisory Path
+- Show Fallback Behaviour
+
+“Test AMD/vLLM Advisory Path” must run a new real request and display the resulting request ID, timestamp, latency, tokens, fallback state, and advisory inline. A toast alone is not sufficient.
+
+============================================================
+3. ALLOW JUDGES TO SUBMIT COMPLEX AND BURST WORKLOADS
+============================================================
+
+Expand AMD Impact into a real judge-controlled workload playground.
+
+Provide three workload tabs:
+
+  A. Single Incident
+  B. Complex Dossier
+  C. Burst Workload
+
+------------------------------------------------------------
+A. SINGLE INCIDENT
+------------------------------------------------------------
+
+Preserve the judge-editable synthetic input flow.
+
+The judge must be able to:
+- type their own synthetic report,
+- edit the example,
+- submit it to the real AMD/vLLM backend,
+- see their original input,
+- see sanitized input,
+- see normalized output,
+- see the actual generated advisory,
+- see fresh live verification evidence.
+
+Button:
+
+  Run My Input on AMD MI300X
+
+------------------------------------------------------------
+B. COMPLEX DOSSIER
+------------------------------------------------------------
+
+Provide a large editable textarea titled:
+
+  Complex Multi-Report Dossier
+
+Allow the judge to paste a large mixture of reports, updates, inventory notes, road status messages, OCR text, rumours, multilingual text, and conflicting information.
+
+Buttons:
+
+  Load Complex Flood Dossier Example
+  Run Complex Dossier on AMD MI300X
+  Clear
+
+Support a practical long-input limit compatible with the current 8192-token model context. Show:
+- character count,
+- approximate token estimate,
+- safe maximum,
+- validation errors before submission.
+
+The built-in example should contain:
+- 15–25 reports,
+- English, Hindi, and Hinglish,
+- OCR corruption and spelling mistakes,
+- duplicate and near-duplicate reports,
+- conflicting people counts,
+- conflicting location descriptions,
+- older and newer timestamped updates,
+- rescue, medical, shelter, food/water, and evacuation needs,
+- children, elderly, pregnancy, disability, and medication flags,
+- road closures and alternative routes,
+- shelter capacities,
+- inventory quantities,
+- one unverified social-media rumour,
+- missing fields requiring follow-up,
+- no real personal information.
+
+The response must visibly show:
+
+  Original Dossier
+  Sanitized Dossier Sent to AMD
+  Consolidated Cases
+  Duplicate Clusters
+  Contradictions
+  Superseded Updates
+  Priority Suggestions
+  Missing-Information Questions
+  Operator Notes
+  Human Review Required
+
+For normalized fields show:
+
+  Field | Source Evidence | Normalized Value | Confidence
+
+Also provide a compact structured JSON view.
+
+------------------------------------------------------------
+C. BURST WORKLOAD
+------------------------------------------------------------
+
+Allow judges to provide their own batch of synthetic incident reports.
+
+Support these input formats:
+
+1. One report per line.
+2. JSON array of strings.
+3. JSONL where each line contains an object with at least:
+   {
+     "id": "judge-case-1",
+     "text": "synthetic incident text"
+   }
+
+Provide:
+
+  Load 12-Case Example
+  Parse Workload
+  Run Burst on AMD MI300X
+  Clear
+
+Show the parsed case count before running.
+
+Allow a bounded workload:
+- minimum: 1 case,
+- maximum: 24 cases,
+- selectable concurrency: 1, 2, 4, 6, or 8,
+- default concurrency: 4.
+
+Do not silently truncate inputs.
+If there are more than 24 cases, show a clear validation error.
+
+The backend must execute genuine live requests through the configured AMD/vLLM provider. Do not return cached or hard-coded model outputs.
+
+Add a backend endpoint such as:
+
+  POST /api/ai/burst-verification
+
+Request body:
+
+  {
+    "reports": [
+      {
+        "id": "judge-case-1",
+        "text": "..."
+      }
+    ],
+    "concurrency": 4
+  }
+
+The backend must:
+- use server-side OPENAI_COMPAT_* environment variables,
+- never accept an endpoint, API key, or model override from the browser,
+- generate a batch ID,
+- generate a unique challenge nonce per case,
+- sanitize obvious phone numbers and email addresses,
+- preserve original synthetic input for comparison,
+- call the real configured provider once per case,
+- enforce bounded concurrency,
+- enforce request and total workload limits,
+- keep human_review_required=true,
+- truthfully report fallback per case,
+- never show a fallback result as VERIFIED LIVE,
+- never expose authorization headers or secrets.
+
+Display aggregate burst evidence:
+
+  Batch ID
+  Started At
+  Completed At
+  Submitted
+  Succeeded
+  Failed
+  Live AMD responses
+  Fallback responses
+  Total elapsed time
+  Median latency
+  P95 latency
+  Prompt tokens
+  Completion tokens
+  Total tokens
+  Approximate throughput
+  Active model
+  Runtime
+  Accelerator
+  Human review required
+
+Display a result table:
+
+  Case ID
+  Original Input
+  Normalized Summary
+  Status
+  Request ID
+  Challenge Nonce
+  Latency
+  Tokens
+  Fallback Used
+  Review Required
+  View Details
+
+Each “View Details” control must show:
+
+  Original Input
+  Sanitized Input
+  Normalized Structured Record
+  Source Evidence
+  Missing Fields
+  Warnings
+  Actual AMD Advisory
+  Request ID
+  UTC timestamp
+  Input SHA-256
+  Output SHA-256
+
+Repeated burst runs must generate a new batch ID, new challenge nonces, new request IDs, and fresh timestamps.
+
+Clear old success state immediately when a new burst starts.
+
+============================================================
+4. NAVIGATION AND WALKTHROUGH
+============================================================
+
+Update Judge Demo Walkthrough to explicitly offer:
+
+  Try Your Own Incident
+  Run a Complex Dossier
+  Simulate a Burst Workload
+
+The walkthrough must direct judges to enter or edit their own text.
+
+No walkthrough action may complete only through a toast or “done” notification.
+
+At least one visible step must produce:
+- a fresh real AMD request,
+- request ID,
+- challenge nonce,
+- timestamp,
+- latency,
+- token usage,
+- actual generated output,
+- fallback used: No,
+- human review required: Yes.
+
+============================================================
+5. TRUTHFUL MODEL AND HARDWARE TEXT
+============================================================
+
+Use these exact active deployment facts:
+
+  Provider: AMD Developer Cloud
+  Accelerator: AMD Instinct MI300X
+  Runtime: vLLM 0.23.0
+  Underlying model: Qwen/Qwen2.5-7B-Instruct
+  Served model: reliefqueue-amd
+
+Do not show:
+- Default Model
+- Gemma 4 as active
+- Gemma 4 as verified
+- Pending Verification
+- unsupported claims that smaller models cannot perform the task
+- claims of higher accuracy without evaluation evidence
+
+The Gemma section may remain only as:
+
+  Experimental bonus lane — not active in this deployment
+
+It must not distract from the active AMD/Qwen proof.
+
+Use this positioning:
+
+  Long-context, multilingual and concurrent humanitarian analysis accelerated by AMD Instinct MI300X.
+
+============================================================
+6. SECURITY AND SAFETY
+============================================================
+
+Preserve:
+- synthetic/demo input only,
+- advisory only,
+- coordinator approval required,
+- human review required,
+- no automatic field dispatch,
+- no real provider messages,
+- deterministic fallback available,
+- API key server-side only.
+
+Never expose:
+- OPENAI_COMPAT_API_KEY,
+- Authorization header,
+- raw process environment,
+- secret endpoint credentials,
+- internal stack traces.
+
+Require a checkbox before free-form submission:
+
+  I confirm this is synthetic demonstration data and contains no real personal information.
+
+============================================================
+7. TESTS
+============================================================
+
+Add focused tests proving:
+
+- “Pending Verification” no longer appears.
+- Capability Map platform-comparison text no longer appears.
+- User-created single input reaches the backend request.
+- Complex dossier input is editable and reaches the provider.
+- Burst input accepts one-per-line, JSON array, and JSONL.
+- More than 24 cases is rejected.
+- Concurrency is bounded.
+- Each live result receives a new nonce and request ID.
+- Repeated runs produce fresh evidence.
+- Original and normalized inputs are both visible.
+- Burst metrics are calculated from actual request results.
+- Failed and fallback requests cannot display VERIFIED LIVE.
+- API key never appears in API responses or frontend output.
+- Human review remains required.
+- Production frontend build passes.
+
+Run:
+- relevant backend tests,
+- relevant frontend tests,
+- type checking,
+- production build,
+- existing AI endpoint smoke where available.
+
+Do not modify deployment secrets or AMD infrastructure.
+
+Final acceptance:
+
+1. AMD Impact contains no “Pending Verification”.
+2. Capability Map contains no Replit/Vercel/Streamlit comparison text.
+3. A judge can paste their own complex dossier.
+4. A judge can paste or construct a batch of up to 24 reports.
+5. A burst run generates genuine live AMD/vLLM requests.
+6. The portal displays fresh request IDs, nonces, timestamps, latency, tokens, per-case output, aggregate metrics, fallback state, and human-review state inline.
+7. No success relies only on a toast.
