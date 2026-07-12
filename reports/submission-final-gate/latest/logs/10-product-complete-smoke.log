@@ -1,0 +1,44 @@
+COMMAND=npm --prefix dashboard run product-complete-smoke
+
+> reliefqueue-dashboard@0.2.0 product-complete-smoke
+> node scripts/productClickSmoke.mjs product-complete
+
+product click smoke ports: api=37417 app=38159
+ACTION_START action_id=command.open_case_detail route=/dashboard/assignments
+ACTION_START action_id=command.assign_or_reassign_worker route=/dashboard/assignments
+ACTION_START action_id=command.set_case_in_progress route=/dashboard/assignments
+ACTION_START action_id=command.queue_local_message route=/dashboard/assignments
+ACTION_START action_id=command.run_deterministic_drill route=/dashboard?source=latest
+ACTION_START action_id=command.request_review_required_ai_advisory route=/dashboard/assignments
+ACTION_START action_id=command.nav_overview route=/dashboard?source=latest
+ACTION_START action_id=command.nav_assignments route=/dashboard?source=latest
+ACTION_START action_id=command.nav_field_sync route=/dashboard?source=latest
+ACTION_START action_id=command.nav_scenario route=/dashboard?source=latest
+ACTION_START action_id=command.nav_ai_control route=/dashboard?source=latest
+ACTION_START action_id=command.nav_quality route=/dashboard?source=latest
+ACTION_START action_id=command.nav_audit route=/dashboard?source=latest
+ACTION_START action_id=command.paid_sms_disabled route=/dashboard/assignments
+ACTION_START action_id=field.open_case_detail route=/field/my-cases?worker_id=worker-alpha-boat
+ACTION_START action_id=field.back_to_case_list route=/field/cases/RQ-1042
+ACTION_START action_id=field.acknowledge_assignment route=/field/cases/RQ-1042
+ACTION_START action_id=field.start_or_accept_work route=/field/cases/RQ-1042
+ACTION_START action_id=field.add_note route=/field/cases/RQ-1042
+ACTION_START action_id=field.add_evidence_metadata route=/field/cases/RQ-1042
+ACTION_START action_id=field.mark_complete_or_delivered route=/field/cases/RQ-1042
+ACTION_START action_id=field.mark_blocked_or_needs_help route=/field/cases/RQ-1042
+ACTION_START action_id=field.review_outbox route=/field/cases/RQ-1042
+ACTION_START action_id=field.sync_pending_actions route=/field/outbox
+ACTION_START action_id=field.paid_call_disabled route=/field/cases/RQ-1042
+ACTION_START action_id=local.view_scenario_profile route=/local-coordinator?source=latest
+ACTION_START action_id=local.update_scenario_profile route=/local-coordinator?source=latest
+ACTION_START action_id=local.update_operation_zone route=/local-coordinator?source=latest
+ACTION_START action_id=local.update_relief_hub route=/local-coordinator?source=latest
+ACTION_START action_id=local.update_reachable_radius route=/local-coordinator?source=latest
+ACTION_START action_id=local.update_priority_needs route=/local-coordinator?source=latest
+ACTION_START action_id=local.update_blocked_safe_areas route=/local-coordinator?source=latest
+ACTION_START action_id=local.view_case_locations route=/local-coordinator?source=latest
+ACTION_START action_id=local.view_worker_roster_status route=/local-coordinator?source=latest
+ACTION_START action_id=local.open_local_decision_case route=/local-coordinator?source=latest
+ACTION_START action_id=internal.classic_dashboard_debug_notice route=/internal/classic-dashboard?source=latest
+product-complete click smoke PASS (36 actions)
+evidence: reports/product-click-smoke/latest/product-complete.json

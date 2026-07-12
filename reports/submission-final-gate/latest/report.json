@@ -1,0 +1,191 @@
+{
+  "contract": "reliefqueue-submission-final-gate/v1",
+  "failures": [],
+  "fast_mode": false,
+  "generated_at_utc": "2026-07-12T09:42:17Z",
+  "provider_calls": 0,
+  "provider_credentials_removed": [
+    "AI_API_KEY",
+    "AI_BASE_URL",
+    "AI_MODEL",
+    "FIREWORKS_API_KEY",
+    "FIREWORKS_BASE_URL",
+    "FIREWORKS_MODEL",
+    "OPENAI_COMPAT_API_KEY",
+    "OPENAI_COMPAT_BASE_URL",
+    "OPENAI_COMPAT_MODEL",
+    "OPENAI_COMPAT_UNDERLYING_MODEL"
+  ],
+  "public_url_checked": false,
+  "status": "PASS",
+  "steps": [
+    {
+      "command": [
+        "python3",
+        "scripts/amd_evidence_report.py"
+      ],
+      "duration_seconds": 0.083,
+      "exit_code": 0,
+      "log": "reports/submission-final-gate/latest/logs/01-amd-evidence-validate.log",
+      "name": "amd-evidence-validate",
+      "status": "PASS"
+    },
+    {
+      "command": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests"
+      ],
+      "duration_seconds": 26.026,
+      "exit_code": 0,
+      "log": "reports/submission-final-gate/latest/logs/02-repository-tests.log",
+      "name": "repository-tests",
+      "status": "PASS"
+    },
+    {
+      "command": [
+        "python3",
+        "-m",
+        "reliefqueue.cli",
+        "no-secrets"
+      ],
+      "duration_seconds": 11.139,
+      "exit_code": 0,
+      "log": "reports/submission-final-gate/latest/logs/03-no-secrets.log",
+      "name": "no-secrets",
+      "status": "PASS"
+    },
+    {
+      "command": [
+        "python3",
+        "scripts/public_ship_check.py"
+      ],
+      "duration_seconds": 0.248,
+      "exit_code": 0,
+      "log": "reports/submission-final-gate/latest/logs/04-public-ship-check.log",
+      "name": "public-ship-check",
+      "status": "PASS"
+    },
+    {
+      "command": [
+        "make",
+        "dashboard-build"
+      ],
+      "duration_seconds": 8.048,
+      "exit_code": 0,
+      "log": "reports/submission-final-gate/latest/logs/05-dashboard-build.log",
+      "name": "dashboard-build",
+      "status": "PASS"
+    },
+    {
+      "command": [
+        "npm",
+        "--prefix",
+        "dashboard",
+        "run",
+        "amd-evidence-ui-check"
+      ],
+      "duration_seconds": 5.978,
+      "exit_code": 0,
+      "log": "reports/submission-final-gate/latest/logs/06-amd-evidence-ui-check.log",
+      "name": "amd-evidence-ui-check",
+      "status": "PASS"
+    },
+    {
+      "command": [
+        "npm",
+        "--prefix",
+        "dashboard",
+        "run",
+        "command-center-click-smoke"
+      ],
+      "duration_seconds": 23.859,
+      "exit_code": 0,
+      "log": "reports/submission-final-gate/latest/logs/07-command-center-click-smoke.log",
+      "name": "command-center-click-smoke",
+      "status": "PASS"
+    },
+    {
+      "command": [
+        "npm",
+        "--prefix",
+        "dashboard",
+        "run",
+        "field-app-click-smoke"
+      ],
+      "duration_seconds": 20.131,
+      "exit_code": 0,
+      "log": "reports/submission-final-gate/latest/logs/08-field-app-click-smoke.log",
+      "name": "field-app-click-smoke",
+      "status": "PASS"
+    },
+    {
+      "command": [
+        "npm",
+        "--prefix",
+        "dashboard",
+        "run",
+        "local-coordinator-click-smoke"
+      ],
+      "duration_seconds": 19.912,
+      "exit_code": 0,
+      "log": "reports/submission-final-gate/latest/logs/09-local-coordinator-click-smoke.log",
+      "name": "local-coordinator-click-smoke",
+      "status": "PASS"
+    },
+    {
+      "command": [
+        "npm",
+        "--prefix",
+        "dashboard",
+        "run",
+        "product-complete-smoke"
+      ],
+      "duration_seconds": 57.977,
+      "exit_code": 0,
+      "log": "reports/submission-final-gate/latest/logs/10-product-complete-smoke.log",
+      "name": "product-complete-smoke",
+      "status": "PASS"
+    },
+    {
+      "command": [
+        "bash",
+        "scripts/replit_smoke.sh"
+      ],
+      "duration_seconds": 0.824,
+      "exit_code": 0,
+      "log": "reports/submission-final-gate/latest/logs/11-replit-smoke.log",
+      "name": "replit-smoke",
+      "status": "PASS"
+    },
+    {
+      "command": [
+        "npm",
+        "--prefix",
+        "dashboard",
+        "run",
+        "replit-navigation-smoke"
+      ],
+      "duration_seconds": 8.571,
+      "exit_code": 0,
+      "log": "reports/submission-final-gate/latest/logs/12-replit-navigation-smoke.log",
+      "name": "replit-navigation-smoke",
+      "status": "PASS"
+    },
+    {
+      "command": [
+        "python3",
+        "-m",
+        "reliefqueue.submission_pack"
+      ],
+      "duration_seconds": 0.134,
+      "exit_code": 0,
+      "log": "reports/submission-final-gate/latest/logs/13-submission-pack.log",
+      "name": "submission-pack",
+      "status": "PASS"
+    }
+  ]
+}

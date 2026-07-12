@@ -1,0 +1,6 @@
+COMMAND=npm --prefix dashboard run replit-navigation-smoke
+
+> reliefqueue-dashboard@0.2.0 replit-navigation-smoke
+> node scripts/replitNavigationCheck.mjs
+
+replit navigation smoke PASS: command=13 field=4 role_switches=3 history=PASS runtime_status=PASS mobile_field=PASS

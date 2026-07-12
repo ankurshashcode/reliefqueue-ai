@@ -1,0 +1,5 @@
+COMMAND=python3 -m reliefqueue.submission_pack
+SUBMISSION_PACK=PASS
+SUBMISSION_PACK_DIR=/home/ankur-sawhney/githubRepos/ankurshashcode/reliefqueue-ai/reports/latest/submission_pack
+SUBMISSION_PACK_ARCHIVE=/home/ankur-sawhney/githubRepos/ankurshashcode/reliefqueue-ai/reports/latest/submission_pack/reliefqueue_submission_pack.tar.gz
+PUBLIC_URL_PROVIDED=false

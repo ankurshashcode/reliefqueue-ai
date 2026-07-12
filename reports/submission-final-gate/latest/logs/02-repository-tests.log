@@ -1,0 +1,163 @@
+COMMAND=python3 -m unittest discover -s tests
+.............................................................................................................................................................AMD benchmark PASS: 3 synthetic reports, mode=mock
+Benchmark report: /tmp/tmpqfgc34i1/reports/latest/amd_benchmark.json
+AMD benchmark SKIP: OpenAI-compatible/vLLM env is missing.
+Benchmark report: /tmp/tmpqfgc34i1/reports/latest/amd_benchmark.json
+Operations smoke PASS: status, queue simulation, and failed-job report written.
+Degraded-mode smoke PASS: deterministic flow remains available without AI.
+Backup PASS: /tmp/tmpv2qbxbgi/reports/latest/backups/demo-state.tar.gz
+Restore PASS: restored archive into /tmp/tmpv2qbxbgi/reports/latest/restore-smoke
+Audit smoke PASS: wrote /tmp/tmpi9lh1l90/reports/latest/field_audit_demo.jsonl
+Privacy check PASS: public exports and field-worker minimization are allowlisted.
+Pilot feedback template PASS: /tmp/tmp0ra4rcmu/reports/latest/pilot_feedback_template.json
+Reviewer pack PASS: /tmp/tmp0ra4rcmu/reports/latest/reviewer_pack
+Pilot feedback template PASS: /tmp/tmp0ra4rcmu/reports/latest/pilot_feedback_template.json
+Pilot smoke PASS: reviewer pack and feedback template are sanitized.
+Security check PASS: no secrets or full environment dumps found in source/reports/public data.
+amd-live-report FAIL: wrote /tmp/tmpafx6lrgi/reports/latest/live_integrations/ai-model-endpoint/amd_live_report.json
+amd-live-report PASS: wrote /tmp/tmpb5xd7occ/reports/latest/live_integrations/ai-model-endpoint/amd_live_report.json
+postgis-live-query FAIL: wrote /tmp/tmpb9uzay5f/reports/latest/live_integrations/geospatial-store/postgis_live_query.json
+queue-live-worker-once FAIL: wrote /tmp/tmp_do_pvwp/reports/latest/live_integrations/operations-queue/queue_live_worker_once.json
+vllm-live-smoke FAIL: wrote /tmp/tmp52iv5k6k/reports/latest/live_integrations/ai-model-endpoint/vllm_live_smoke.json
+live-health FAIL: wrote /tmp/tmpckqzwf6d/reports/latest/live_integrations/system-health/live_health.json
+postgis-live-init PASS: wrote /tmp/tmpezp0n6mf/reports/latest/live_integrations/geospatial-store/postgis_live_init.json
+queue-live-init PASS: wrote /tmp/tmpezp0n6mf/reports/latest/live_integrations/operations-queue/queue_live_init.json
+live-logistics-asset-drill PASS: wrote /tmp/tmpnor9fr9z/reports/latest/live_integrations/logistics-assets/live_logistics_asset_drill.json
+live-logistics-asset-drill SKIP: wrote /tmp/tmpcuaj_7w7/reports/latest/live_integrations/logistics-assets/live_logistics_asset_drill.json
+masked-contact-create-dry-run PASS: wrote /tmp/tmpxnrrhoe8/reports/latest/live_integrations/masked-contact/masked_contact_create_dry_run.json
+postgis-live-init SKIP: wrote /tmp/tmpj3agkyrq/reports/latest/live_integrations/geospatial-store/postgis_live_init.json
+postgis-live-import-demo SKIP: wrote /tmp/tmpj3agkyrq/reports/latest/live_integrations/geospatial-store/postgis_live_import_demo.json
+postgis-live-query SKIP: wrote /tmp/tmpj3agkyrq/reports/latest/live_integrations/geospatial-store/postgis_live_query.json
+postgis-live-backup PASS: wrote /tmp/tmpj3agkyrq/reports/latest/live_integrations/geospatial-store/postgis_live_backup.json
+postgis-live-restore-smoke PASS: wrote /tmp/tmpj3agkyrq/reports/latest/live_integrations/geospatial-store/postgis_live_restore_smoke.json
+postgis-live-smoke PASS: wrote /tmp/tmpj3agkyrq/reports/latest/live_integrations/geospatial-store/postgis_live_smoke.json
+queue-live-init SKIP: wrote /tmp/tmpj3agkyrq/reports/latest/live_integrations/operations-queue/queue_live_init.json
+queue-live-enqueue-demo PASS: wrote /tmp/tmpj3agkyrq/reports/latest/live_integrations/operations-queue/queue_live_enqueue_demo.json
+queue-live-worker-once PASS: wrote /tmp/tmpj3agkyrq/reports/latest/live_integrations/operations-queue/queue_live_worker_once.json
+queue-live-dlq-report PASS: wrote /tmp/tmpj3agkyrq/reports/latest/live_integrations/operations-queue/queue_live_dlq_report.json
+queue-live-replay-dlq SKIP: wrote /tmp/tmpj3agkyrq/reports/latest/live_integrations/operations-queue/queue_live_replay_dlq.json
+queue-live-smoke PASS: wrote /tmp/tmpj3agkyrq/reports/latest/live_integrations/operations-queue/queue_live_smoke.json
+amd-live-report PASS: wrote /tmp/tmpj3agkyrq/reports/latest/live_integrations/ai-model-endpoint/amd_live_report.json
+live-health PASS: wrote /tmp/tmpj3agkyrq/reports/latest/live_integrations/system-health/live_health.json
+live-metrics-export PASS: wrote /tmp/tmpj3agkyrq/reports/latest/live_integrations/system-health/live_metrics_export.json
+live-audit-report PASS: wrote /tmp/tmpj3agkyrq/reports/latest/live_integrations/system-health/live_audit_report.json
+live-failure-report PASS: wrote /tmp/tmpj3agkyrq/reports/latest/live_integrations/system-health/live_failure_report.json
+observability-live-smoke PASS: wrote /tmp/tmpj3agkyrq/reports/latest/live_integrations/system-health/observability_live_smoke.json
+field-form-xlsform-export PASS: wrote /tmp/tmpj3agkyrq/reports/latest/live_integrations/field-forms/field_form_xlsform_export.json
+field-form-odk-package PASS: wrote /tmp/tmpj3agkyrq/reports/latest/live_integrations/field-forms/field_form_odk_package.json
+field-form-import-sample PASS: wrote /tmp/tmpj3agkyrq/reports/latest/live_integrations/field-forms/field_form_import_sample.json
+odk-live-status SKIP: wrote /tmp/tmpj3agkyrq/reports/latest/live_integrations/field-forms/odk_live_status.json
+odk-live-smoke PASS: wrote /tmp/tmpj3agkyrq/reports/latest/live_integrations/field-forms/odk_live_smoke.json
+rapidpro-flow-export PASS: wrote /tmp/tmpj3agkyrq/reports/latest/live_integrations/messaging-channel/rapidpro_flow_export.json
+rapidpro-webhook-smoke PASS: wrote /tmp/tmpj3agkyrq/reports/latest/live_integrations/messaging-channel/rapidpro_webhook_smoke.json
+rapidpro-outbox-dry-run PASS: wrote /tmp/tmpj3agkyrq/reports/latest/live_integrations/messaging-channel/rapidpro_outbox_dry_run.json
+rapidpro-live-status SKIP: wrote /tmp/tmpj3agkyrq/reports/latest/live_integrations/messaging-channel/rapidpro_live_status.json
+rapidpro-live-smoke PASS: wrote /tmp/tmpj3agkyrq/reports/latest/live_integrations/messaging-channel/rapidpro_live_smoke.json
+channel-live-status SKIP: wrote /tmp/tmpj3agkyrq/reports/latest/live_integrations/communication-channels/channel_live_status.json
+masked-contact-cancel-dry-run PASS: wrote /tmp/tmpj3agkyrq/reports/latest/live_integrations/masked-contact/masked_contact_cancel_dry_run.json
+live-pilot-drill PASS: wrote /tmp/tmpj3agkyrq/reports/latest/live_integrations/pilot-drill/live_pilot_drill.json
+live-pilot-reviewer-pack PASS: wrote /tmp/tmpj3agkyrq/reports/latest/live_integrations/pilot-drill/live_pilot_reviewer_pack.json
+live-pilot-status PASS: wrote /tmp/tmpj3agkyrq/reports/latest/live_integrations/pilot-drill/live_pilot_status.json
+queue-live-enqueue-demo PASS: wrote /tmp/tmpr1bixrif/reports/latest/live_integrations/operations-queue/queue_live_enqueue_demo.json
+queue-live-worker-once PASS: wrote /tmp/tmpr1bixrif/reports/latest/live_integrations/operations-queue/queue_live_worker_once.json
+queue-live-dlq-report PASS: wrote /tmp/tmpr1bixrif/reports/latest/live_integrations/operations-queue/queue_live_dlq_report.json
+queue-live-replay-dlq SKIP: wrote /tmp/tmpr1bixrif/reports/latest/live_integrations/operations-queue/queue_live_replay_dlq.json
+channel-normalize-smoke PASS: wrote /tmp/tmpf7es01zm/reports/latest/live_integrations/communication-channels/channel_normalize_smoke.json
+live-pilot-drill PASS: wrote /tmp/tmpf7es01zm/reports/latest/live_integrations/pilot-drill/live_pilot_drill.json
+live-pilot-reviewer-pack PASS: wrote /tmp/tmpf7es01zm/reports/latest/live_integrations/pilot-drill/live_pilot_reviewer_pack.json
+live-stateful-mutation-drill PASS: wrote /tmp/tmpk0q2xbnn/reports/latest/live_integrations/stateful-mutation/live_stateful_mutation_drill.json
+live-stateful-mutation-drill SKIP: wrote /tmp/tmp0z20x_tz/reports/latest/live_integrations/stateful-mutation/live_stateful_mutation_drill.json
+live-stateful-mutation-drill SKIP: wrote /tmp/tmpvr5n7lib/reports/latest/live_integrations/stateful-mutation/live_stateful_mutation_drill.json
+live-volunteer-surge-drill SKIP: wrote /tmp/tmpoo638duc/reports/latest/live_integrations/volunteer-surge/live_volunteer_surge_drill.json
+Live stack down PASS: Local live stack stopped.
+Engine: docker
+- postgis: PASS (stopped)
+- redis: PASS (stopped)
+- nats: PASS (stopped)
+....................................................................................................................................
+----------------------------------------------------------------------
+Ran 289 tests in 25.631s
+
+OK
+Report: /tmp/tmp634z9l57/reports/latest/live_stack_status.json
+Volumes: preserved
+Live stack up PASS: Local live stack started and is ready.
+Engine: docker
+- postgis: PASS (running (healthy))
+- redis: PASS (running (healthy))
+- nats: PASS (running (healthy))
+Report: /tmp/tmp0c5zpcss/reports/latest/live_stack_status.json
+Local service ports:
+- postgis: 127.0.0.1:54329
+- redis: 127.0.0.1:63799
+- nats: 127.0.0.1:42299
+Live stack status PASS: Local live stack services are running.
+Engine: docker
+- postgis: PASS (running (healthy))
+- redis: PASS (running (healthy))
+- nats: PASS (running (healthy))
+Report: /tmp/tmpezfixocw/reports/latest/live_stack_status.json
+Local service ports:
+- postgis: 127.0.0.1:54329
+- redis: 127.0.0.1:63799
+- nats: 127.0.0.1:42299
+Phase 01 live proof PASS: report /tmp/tmpqfqppmhd/reports/latest/phase01_live_proof.json
+Phase 01 live proof PASS: report /tmp/tmpd0qhm9uj/reports/latest/phase01_live_proof.json
+Phase 01 live proof SKIP: Docker Engine, Compose plugin, or socket access is not ready.
+Report: /tmp/tmp648lbqtt/reports/latest/phase01_live_proof.json
+Integrations status PASS: wrote /tmp/tmppi5xk5ko/reports/latest/integrations_status.json
+Secrets: not printed
+Configured: none
+Skipped missing env: postgis, redis_streams, nats_jetstream, rapidpro, twilio_sms, whatsapp, masked_contact_provider
+PostGIS seed export PASS: wrote /tmp/tmppi5xk5ko/reports/latest/postgis_seed
+Queue smoke PASS: processed=4 retry=1 dead_lettered=1
+Field form export PASS: wrote /tmp/tmppi5xk5ko/reports/latest/field_form_package
+Messaging exchange smoke PASS: inbound=3 outbound=3
+Masked contact smoke PASS: proxy_session_id=proxy-600595804e9af17e
+Observability smoke PASS: wrote /tmp/tmppi5xk5ko/reports/latest/observability_metrics.json
+Live integrations status PASS: wrote /tmp/tmppi5xk5ko/reports/latest/live_integrations_status.json
+- postgis: SKIP
+- redis_streams: SKIP
+- nats_jetstream: SKIP
+- rapidpro: SKIP
+- twilio_sms: SKIP
+- whatsapp: SKIP
+- masked_contact_provider: SKIP
+Integration smoke PASS: 8 local boundary command(s) passed.
+Result archive: /tmp/tmppi5xk5ko/reports/latest/scale_integration_result.tar.gz
+Fallback archive: /tmp/tmppi5xk5ko/reports/latest/scale_integration_fallback.tar.gz
+Integrations status PASS: wrote /tmp/tmplgs3la4x/reports/latest/integrations_status.json
+Secrets: not printed
+Configured: postgis
+Skipped missing env: redis_streams, nats_jetstream, rapidpro, twilio_sms, whatsapp, masked_contact_provider
+PostGIS seed export PASS: wrote /tmp/tmpksm6mtre/reports/latest/postgis_seed
+Queue smoke PASS: processed=4 retry=1 dead_lettered=1
+Field form export PASS: wrote /tmp/tmpksm6mtre/reports/latest/field_form_package
+Messaging exchange smoke PASS: inbound=3 outbound=3
+Masked contact smoke PASS: proxy_session_id=proxy-600595804e9af17e
+Observability smoke PASS: wrote /tmp/tmpksm6mtre/reports/latest/observability_metrics.json
+Live integrations status PASS: wrote /tmp/tmpksm6mtre/reports/latest/live_integrations_status.json
+- postgis: SKIP
+- redis_streams: SKIP
+- nats_jetstream: SKIP
+- rapidpro: SKIP
+- twilio_sms: SKIP
+- whatsapp: SKIP
+- masked_contact_provider: SKIP
+Queue smoke PASS: processed=4 retry=1 dead_lettered=1
+AI smoke mode: openai_compatible
+AI health: configured
+AI status counts: {'provider_error': 2}
+AI endpoint: http://127.0.0.1:9/v1
+AI failure details:
+- case-fc88c47d1c: provider_error: provider_error: <urlopen error [Errno 111] Connection refused>
+- case-d4909c6bdf: provider_error: provider_error: <urlopen error [Errno 111] Connection refused>
+AI smoke FAIL: configured OpenAI-compatible endpoint did not enrich all sampled cases.
+Batch demo generated 100 synthetic reports in /tmp/tmp3vrr2g9d/reports/batch-100/latest
+Validation PASS
+Batch demo generated 100 synthetic reports in /tmp/tmpb3winihx/reports/batch-100/latest
+Validation PASS
+Public export ready: /tmp/tmpv6aaart0/reports/latest/public
+Redaction passed: False
+- redacted_cases.jsonl
+Public export FAIL: redaction validator did not pass.

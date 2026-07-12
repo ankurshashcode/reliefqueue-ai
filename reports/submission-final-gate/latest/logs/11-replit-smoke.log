@@ -1,0 +1,2 @@
+COMMAND=bash scripts/replit_smoke.sh
+replit-smoke PASS routes=9 api_reads=1 mutations=1 unknown_404s=2

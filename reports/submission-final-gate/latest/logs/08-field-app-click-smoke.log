@@ -1,0 +1,19 @@
+COMMAND=npm --prefix dashboard run field-app-click-smoke
+
+> reliefqueue-dashboard@0.2.0 field-app-click-smoke
+> node scripts/productClickSmoke.mjs field
+
+product click smoke ports: api=40913 app=40119
+ACTION_START action_id=field.open_case_detail route=/field/my-cases?worker_id=worker-alpha-boat
+ACTION_START action_id=field.back_to_case_list route=/field/cases/RQ-1042
+ACTION_START action_id=field.acknowledge_assignment route=/field/cases/RQ-1042
+ACTION_START action_id=field.start_or_accept_work route=/field/cases/RQ-1042
+ACTION_START action_id=field.add_note route=/field/cases/RQ-1042
+ACTION_START action_id=field.add_evidence_metadata route=/field/cases/RQ-1042
+ACTION_START action_id=field.mark_complete_or_delivered route=/field/cases/RQ-1042
+ACTION_START action_id=field.mark_blocked_or_needs_help route=/field/cases/RQ-1042
+ACTION_START action_id=field.review_outbox route=/field/cases/RQ-1042
+ACTION_START action_id=field.sync_pending_actions route=/field/outbox
+ACTION_START action_id=field.paid_call_disabled route=/field/cases/RQ-1042
+field click smoke PASS (11 actions)
+evidence: reports/product-click-smoke/latest/field-app.json

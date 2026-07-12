@@ -1,0 +1,7 @@
+COMMAND=npm --prefix dashboard run amd-evidence-ui-check
+
+> reliefqueue-dashboard@0.2.0 amd-evidence-ui-check
+> node scripts/amdEvidenceUiCheck.mjs
+
+AMD_EVIDENCE_UI_CHECK=PASS
+AMD_EVIDENCE_UI_REPORT=reports/amd-evidence-ui/latest/report.json
