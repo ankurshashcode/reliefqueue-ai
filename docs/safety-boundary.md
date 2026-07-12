@@ -1,76 +1,74 @@
-# Safety Boundary
+# Safety and Privacy Boundary
 
-ReliefQueue is a human-reviewed crisis-intake and coordination aid for synthetic disaster reports. It can organize reports and suggest next steps. It does not replace dispatch authority, rescue confirmation, field verification, legal review, or emergency services.
+ReliefQueue is a human-reviewed coordination aid for synthetic or approved disaster-response data. It does not replace emergency services, dispatch authority, field verification, medical judgment, legal review, or incident command.
 
-## Allowed wording
+## What the system may do
 
-ReliefQueue may say:
+ReliefQueue may:
 
-```text
-AI/rules suggested priority
-needs human review
-possible duplicate
-location confidence
-assignment suggestion
-assignment pending coordinator approval
-masked contact relay stub
-field update reported
-public redacted export
-```
+- summarize an incident safely;
+- suggest urgency, need type, and missing information;
+- flag possible duplicates;
+- suggest an operation zone or assignment candidate;
+- draft a reply or redacted public summary;
+- record a field update as reported;
+- show confidence and uncertainty explicitly.
 
-## Forbidden wording
+## What the system must not claim
 
-ReliefQueue must not say:
+ReliefQueue must not claim:
 
-```text
-auto-dispatched
-confirmed rescued
-confirmed safe
-guaranteed location
-AI rescued the person
-AI verified the emergency
-worker definitely reached victim
-```
+- automatic dispatch;
+- confirmed rescue or safety;
+- guaranteed location;
+- AI verification of an emergency;
+- confirmed field-worker arrival;
+- final medical, legal, or operational authority.
 
-## Human-in-loop rule
+## Human authority
 
-ReliefQueue can suggest urgency, need type, missing information, duplicate group, operation zone, assignment candidate, reply draft, and public redacted summary.
+A human coordinator or authorized operator approves:
 
-A human coordinator/operator approves final priority, assignment, field instruction, public communication, case closure, and any rescue/relief status.
+- final priority;
+- assignment and field instruction;
+- public communication;
+- case closure;
+- any rescue, safety, or relief-status statement.
 
-## Public/private export boundary
+AI output always remains review-required.
 
-Private operator exports are for internal review only and may include raw synthetic report text, synthetic contact-like fixture fields, assignment internals, missing information, location clues, and operator notes. They must be labelled as private and must not be shared publicly.
+## Public and private data
 
-Public exports are allowlist-based. Public case rows may include safe fields such as case id, public reference, safe summary, urgency, need type, people-count bucket, vulnerable-category flags, operation zone, location confidence, safe missing-field labels, duplicate cluster id/size, human-review-required flag, public status, and synthetic-fixture marker.
+Private operator evidence may contain raw synthetic report text, fixture contact-like fields, assignment internals, location clues, and operator notes. It must stay private.
 
-Public exports must not include raw report text, full private names, raw phone numbers, email-like contacts, exact private addresses, worker private contacts, assignment internals, internal notes, API keys, tokens, secrets, unredacted media, or unnecessary medical detail.
+Public exports are allowlist-based. They may contain safe identifiers, safe summaries, urgency and need labels, people-count buckets, vulnerability flags, zones, location confidence, safe missing-field labels, duplicate-group information, public status, human-review flags, and synthetic-data markers.
+
+Public outputs must exclude:
+
+- raw reports and private messages;
+- direct phone or email details;
+- full private names and exact private addresses;
+- unnecessary medical detail;
+- worker private contacts and internal notes;
+- credentials, tokens, or environment dumps;
+- unredacted media.
 
 ## Field-worker minimization
 
-Field workers should see only what they need for the authorized task:
+Field workers receive only the context needed for an authorized task: safe summary, priority, need type, people count, vulnerability flag, zone/landmark clue, location confidence, coordinator instruction, masked contact action, and status controls.
 
-```text
-case id
-safe summary
-priority label
-need type
-people count
-vulnerable category flag
-zone or landmark clue
-location confidence
-coordinator instruction
-masked contact action
-status update buttons
-```
+They must not receive unrelated cases, raw contacts, raw private messages, or unnecessary sensitive detail.
 
-They should not see raw contacts, raw private messages, unnecessary medical detail, or cases outside their authorized zone/assignment.
+## Synthetic-data rule
 
-## Current validation commands
+The public demo and live AMD routes accept synthetic demonstration data only. Do not submit real names, phone numbers, exact addresses, medical identifiers, or live emergency reports.
+
+## Validation
 
 ```bash
 make privacy-check
 make security-check
 make no-secrets
 make field-smoke
+make public-ship-check
 ```

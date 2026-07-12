@@ -1,48 +1,30 @@
-# Living Guide
+# Living Documentation Guide
 
-ReliefQueue documentation is intentionally small. The repository should explain itself through commands first, with Markdown kept only where it preserves current safety boundaries, implementation-process rules, or pilot-readiness context.
+ReliefQueue documentation is split by audience:
 
-## First command
+- `README.md`, `HACKATHON.md`, and `docs/amd-evidence.md` are judge-facing.
+- `docs/development.md`, `docs/operations.md`, safety, AI, and pilot files are technical references.
+- `docs/project-knowledge/` contains maintainer-only references.
+
+## Rules
+
+1. Keep the README focused on the product, demo, AMD contribution, safety, and fastest local run.
+2. Put submission copy and walkthrough details in `HACKATHON.md`.
+3. Put exact benchmark scope and claim limits in `docs/amd-evidence.md`.
+4. Put long command sequences in `docs/operations.md`, not the README.
+5. Put safety-critical wording in the safety or AI boundary files.
+6. Prefer a checked command or test over prose that can drift.
+7. Remove obsolete planning notes instead of preserving multiple versions.
+
+## Command discovery
 
 ```bash
+make change-guide
 make operator
-```
-
-Use search when you remember the situation but not the command:
-
-```bash
 make operator-search QUERY="test live integration"
-make operator-search QUERY="check privacy export"
-make operator-search QUERY="set up docker on OCI"
+make operator-scope ACTION=phase01_live_stack
 ```
-
-Use scope before running anything that touches Docker, host packages, generated reports, or review packets:
-
-```bash
-make operator-scope ACTION=phase01_host_setup
-make operator-scope ACTION=phase01_live_proof
-```
-
-## Retained docs
-
-```text
-README.md                         current entrypoint
-docs/living-guide.md              this guide
-docs/safety-boundary.md           product, privacy, field, and export boundaries
-docs/ai-boundary.md               optional AI/provider boundary
-docs/pilot-readiness.md           pilot checklist, risks, field SOP, and production gaps
-
-docs/project-knowledge/           durable local-AI context used by local-ai commands
-```
-
-## Docs that should not come back
-
-Avoid adding internal runbooks or handoff notes as living docs. If a command is useful, register it in `src/reliefqueue/operator_catalog.py`. If a fact is safety-critical, put it in `docs/safety-boundary.md`. Future implementation inputs should stay outside this public repository until they become shipped product behavior.
 
 ## Drift check
 
-```bash
-make docs-check
-```
-
-The check fails when stale planning wording returns, when removed internal runbooks reappear, or when retained docs are no longer discoverable from README or this guide.
+After documentation edits, run `git diff --check`, review changed links, and confirm that judge-facing claims still match the product.

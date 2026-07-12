@@ -1,204 +1,206 @@
 # ReliefQueue AI
 
-> ReliefQueue AI is presented as a public disaster-relief coordination workflow: field teams use simple role-scoped screens, local coordinators manage zones and assignments, and command-center operators use the portal for safe runtime changes and audit review.
+**Human-reviewed disaster-relief coordination, with deterministic workflows and optional AMD-accelerated AI analysis.**
 
-ReliefQueue AI is a synthetic crisis-intake and coordination system. It turns disaster-style reports into a human-reviewed relief queue with safe summaries, urgency suggestions, missing-information flags, duplicate groups, operation-zone tags, assignment candidates, public redacted exports, and optional live infrastructure proof.
+[Live application](https://reliefqueue-ai--ankurshashcode.replit.app) · [Hackathon submission guide](HACKATHON.md) · [Verified AMD evidence](docs/amd-evidence.md)
 
-The repository is command-led. Start with the operator catalog to run the public relief workflow:
+ReliefQueue AI turns fragmented disaster reports into a structured relief queue. It helps coordinators review urgency, identify missing information and likely duplicates, group incidents by operation zone, propose assignments, track field updates, and prepare redacted public summaries.
 
-```bash
-make change-guide
-make operator
-make operator-search QUERY="test live integration"
-make operator-scope ACTION=phase01_live_stack
+The public demo uses synthetic or replayed scenarios. AI output is advisory only. A human remains responsible for priority, assignment, field instructions, public communication, and case closure.
+
+## Why it matters
+
+Disaster response teams often receive incomplete, duplicated, and rapidly changing reports through multiple channels. ReliefQueue provides one reviewable workflow for:
+
+- crisis intake and triage;
+- duplicate and missing-information review;
+- zone and assignment coordination;
+- field-worker task updates and offline outbox handling;
+- redacted public reporting;
+- optional structured analysis through AMD Developer Cloud and vLLM.
+
+## Judge demo
+
+Open the [live application](https://reliefqueue-ai--ankurshashcode.replit.app) and select **Judge Demo Walkthrough**.
+
+The walkthrough demonstrates:
+
+1. intake of a synthetic incident report;
+2. deterministic queue and assignment support;
+3. optional live AMD analysis with explicit synthetic-data consent;
+4. historical AMD campaign evidence and current-request verification;
+5. handoff to the Field Coordinator workspace;
+6. human-review and privacy boundaries.
+
+Useful routes:
+
+| Surface | Route |
+| --- | --- |
+| Command Center | `/dashboard?source=latest` |
+| AI Intake | `/dashboard/intake` |
+| Assignments | `/dashboard/assignments` |
+| AMD Impact | `/dashboard/amd-impact` |
+| Capability Map | `/dashboard/capability-map` |
+| Field Coordinator | `/field/my-work` |
+| Local Coordinator | `/local-coordinator?source=latest` |
+
+See [HACKATHON.md](HACKATHON.md) for the copy-ready submission text and full judge script.
+
+## How it works
+
+```text
+Synthetic reports
+      │
+      ▼
+Deterministic Python intake and triage
+      │
+      ├── safe summaries, urgency suggestions, missing fields, duplicates
+      ├── operation zones and assignment candidates
+      └── public/private export boundary
+      │
+      ▼
+React/Vite role workspaces
+      ├── Command Center
+      ├── Field Coordinator
+      └── Local Coordinator
+      │
+      └── optional, consent-gated live AI request
+              ▼
+      AMD Developer Cloud → AMD Instinct MI300X → vLLM
 ```
 
-Before changing code or docs: `make change-guide`.
+The deployed demo uses one origin: the Python product API serves the built dashboard and JSON endpoints. The deterministic workflow remains usable when no AI provider is configured.
 
-## Common operator paths
+## AMD and vLLM
 
-### Run the deterministic local demo
+ReliefQueue separates three kinds of evidence:
+
+- **Historical evidence:** a frozen, verified AMD/vLLM campaign.
+- **Live runtime status:** whether the deployed API is currently configured for a provider.
+- **Current-request proof:** evidence returned only after a successful live request.
+
+Verified historical campaign:
+
+| Item | Result |
+| --- | --- |
+| Platform | AMD Developer Cloud |
+| Accelerator | AMD Instinct MI300X |
+| Runtime | vLLM 0.23.0+rocm723 |
+| Served model | `reliefqueue-amd` |
+| Underlying model | `Qwen/Qwen2.5-7B-Instruct` |
+| Case mix | 8 single reports, 8 complex dossiers, 8 adversarial cases |
+| Resolved | 24/24 |
+| Normalized JSON | 100% |
+| Nonce binding | 100% |
+| Source coverage | 100% |
+| Strict raw JSON | 95.83% |
+| Fallbacks | 0 |
+| Human review required | 24/24 |
+
+This was a staged composite evidence campaign, not one uniform production-prompt benchmark. The project does not claim that no other hardware or model could process the same input.
+
+Full metrics, limitations, and reproduction commands are in [docs/amd-evidence.md](docs/amd-evidence.md).
+
+## Connect your own inference server
+
+The public demo may use deterministic mode when the paid AMD GPU endpoint is stopped. Judges can independently test the AI adapter by cloning or remixing the repository and connecting any model served through an **OpenAI-compatible Chat Completions API**.
+
+Configure these server-side variables:
 
 ```bash
-make run-demo-local
-make export-report
-make privacy-check
+AI_MODE=openai_compatible
+OPENAI_COMPAT_BASE_URL=https://your-inference-host/v1
+OPENAI_COMPAT_API_KEY=your-secret
+OPENAI_COMPAT_MODEL=your-served-model
+
+AI_PROVIDER_LABEL="Judge-supplied inference server"
+AI_ACCELERATOR_LABEL="Judge-managed hardware"
+AI_RUNTIME_LABEL="OpenAI-compatible inference API"
+OPENAI_COMPAT_UNDERLYING_MODEL="your-underlying-model"
+
+AI_RESPONSE_FORMAT=json_object
+AI_SEND_PRIVATE_TEXT=false
 ```
 
-Generated demo outputs are written under `reports/latest/`. They are synthetic, but private operator files may still contain raw demo report text and contact-like fixture fields. Clean generated reports with:
+Then verify and run:
 
 ```bash
-make clean-reports
+make ai-endpoint-smoke
+make dashboard
 ```
 
-### Check dashboard and field-worker views
+ReliefQueue calls `POST <OPENAI_COMPAT_BASE_URL>/chat/completions` and expects `choices[0].message.content`. Use `AI_RESPONSE_FORMAT=none` if the server rejects the OpenAI `response_format` option.
 
-For a fresh checkout, install deterministic Python and dashboard dependencies once:
+Judges cannot change credentials on the published deployment; they must use their own clone or remix. A non-AMD server demonstrates adapter portability and must not be presented as current AMD execution. Full setup details are in [docs/development.md](docs/development.md#connect-a-judge-supplied-inference-server).
+
+## Safety and privacy
+
+ReliefQueue may suggest urgency, duplicates, missing information, zones, assignments, and reply drafts. It must not claim automatic dispatch, confirmed rescue, confirmed safety, guaranteed location, or AI verification of an emergency.
+
+Public exports are allowlist-based and exclude raw report text, direct contact details, exact private addresses, internal notes, unnecessary medical details, credentials, and unredacted media. Field workers receive only the information needed for their assigned task.
+
+See [docs/safety-boundary.md](docs/safety-boundary.md) and [docs/ai-boundary.md](docs/ai-boundary.md).
+
+## Run locally
+
+Requirements: Python 3.11+ and Node.js.
 
 ```bash
 python3 -m venv .venv
 . .venv/bin/activate
 python -m pip install -e .
 npm --prefix dashboard ci
-npm --prefix dashboard exec playwright install chromium
-```
 
-Then run the product checks:
-
-```bash
-make dashboard-build
-make dashboard-smoke
-make field-smoke
-make visual-port-smoke
-make messaging-channel-smoke
-```
-
-For an interactive local product stack, run:
-
-```bash
+make run-demo-local
 AI_MODE=mock make dashboard
 ```
 
-Expected local routes on the printed Vite port include:
+The dashboard command prints the local URL. Generated demo reports are written under `reports/latest/` and are ignored by Git.
 
-```text
-/dashboard?source=latest
-/dashboard/assignments
-/dashboard/amd-impact
-/field/my-work
-/field/my-cases?worker_id=worker-alpha-boat
-/field/cases/RQ-1042
-/field/outbox
-/local-coordinator?source=latest
-```
-
-The command-center portal includes a Messaging Channels panel for local SMS, WhatsApp, and voice helpline flow review:
-
-```text
-/dashboard
-```
-
-
-### Offline and efficiency design
-
-The Field Coordinator keeps pending updates in a versioned localStorage outbox and disables network replay while offline, avoiding repeated failed sync attempts until connectivity returns. Command Center and role-specific screens are loaded as separate production chunks, reducing the initial JavaScript required for each route. Printed case, assignment, outbox, and AMD-impact views support low-connectivity handoff without exposing raw private intake text or secrets.
-
-Validate these boundaries with:
+For the single-process deployment used on Replit:
 
 ```bash
-npm --prefix dashboard run build
-npm --prefix dashboard run website:readiness
-npm --prefix dashboard run product-complete-smoke
+make replit-build
+make replit-run
+```
+
+## Validate
+
+```bash
 make test
-AI_MODE=mock make ai-endpoint-smoke
+npm --prefix dashboard run build
+npm --prefix dashboard run product-complete-smoke
+make privacy-check
+make submission-final-gate
 ```
 
-### Run stateful live mutation drill
-
-After the live stack is up, this proves real create/read/update/delete plus meaningful spatial and queue-resilience behavior against synthetic geospatial store and queue service state:
+Check a deployed URL without making provider calls:
 
 ```bash
-make live-stack-up
-make live-stateful-mutation-drill
-make live-stack-down
+RELIEFQUEUE_PUBLIC_URL=https://your-public-url.example make submission-public-check
 ```
 
-For operator-friendly evidence on the console, run the verbose target:
+Run the separate, opt-in live AMD proof only with synthetic input and trusted server-side credentials:
 
 ```bash
-make live-stack-up
-make live-stateful-mutation-drill-verbose
-make live-stack-down
+RELIEFQUEUE_PUBLIC_URL=https://your-public-url.example \
+RELIEFQUEUE_CONFIRM_LIVE_AMD=YES make submission-live-amd-check
 ```
 
-For a named role-aware scenario profile, run:
+## Technical and operator references
 
-```bash
-make live-stack-up
-make live-stateful-mutation-drill-profile PROFILE=urban_flood
-make live-stack-down
-```
+| Document | Purpose |
+| --- | --- |
+| [HACKATHON.md](HACKATHON.md) | Submission copy, judging narrative, and walkthrough |
+| [docs/amd-evidence.md](docs/amd-evidence.md) | Verified campaign, live-proof rules, and limitations |
+| [docs/development.md](docs/development.md) | Setup, architecture, deployment, and validation |
+| [docs/operations.md](docs/operations.md) | Advanced drills, live-stack proof, and generated evidence |
+| [docs/safety-boundary.md](docs/safety-boundary.md) | Human-review, privacy, field, and export rules |
+| [docs/ai-boundary.md](docs/ai-boundary.md) | Deterministic fallback and provider boundary |
+| [docs/pilot-readiness.md](docs/pilot-readiness.md) | Work required before real-world use |
+| [docs/index.md](docs/index.md) | Complete documentation map |
 
-List all built-in profiles first:
-
-```bash
-make live-stateful-mutation-drill-profiles
-```
-
-The profile library covers recent disaster patterns where ReliefQueue can help coordinate urgent field intake: urban/river/flash flooding, coastal cyclones and storm surge, earthquake response, tsunami evacuation, wildfire evacuation and smoke-health support, drought and food-security support, disease/WASH outbreaks, displacement reception, winter storms, volcanic ashfall, dam-breach evacuation, chemical release, power outage critical-needs response, crowd/mass-casualty triage, monsoon drain failure, and crop-loss food-security response.
-
-The local coordinator owns field choices such as hub point, affected zone, reachable radius, priority needs, and case locations. The command center operator owns safe runtime controls exposed through operator commands or the portal, such as sync policy, retry policy, workload controls, and review-safe replay.
-
-Detailed mode prints the selected public scenario, role ownership, coordinator field config, case and zone tables, location assignment evidence, relief-hub radius evidence, distance-to-hub/nearest-case evidence, safe-area exclusion, cleanup counts, command-center runtime config, queue health, worker recovery proof, retry/replay evidence, and duplicate suppression evidence.
-
-The main evidence report is:
-
-```text
-reports/latest/live_integrations/stateful-mutation/live_stateful_mutation_drill.json
-```
-
-The event-transport connector remains a connectivity proof until durable operations messaging is wired.
-
-### Run logistics asset coordination drill
-
-After the live stack is up, this proves ReliefQueue can coordinate synthetic team logistics needs, inventory assets, reservations, dispatch timelines, delivery, return due monitoring, reallocation review, queue service recovery, and cleanup:
-
-```bash
-make live-stack-up
-make live-logistics-asset-drill-profile PROFILE=urban_flood
-make live-stack-down
-```
-
-List the role-aware logistics profiles first:
-
-```bash
-make live-logistics-asset-profiles
-```
-
-The local coordinator owns disaster-specific field needs: field teams, asset needs, hub context, delivery points, needed-by timelines, and return expectations. The command center operator owns safe runtime controls exposed through operator commands or the portal: reservation pressure, sync/retry policy, worker recovery settings, replay review, and stale-return monitoring.
-
-The main evidence report is:
-
-```text
-reports/latest/live_integrations/logistics-assets/live_logistics_asset_drill.json
-```
-
-### Run volunteer surge coordination drill
-
-After the live stack is up, this proves ReliefQueue can register walk-up volunteers encountered by field workers or the coordinator, keep phone-presence outreach as a dry-run call-center review queue, deduplicate repeated volunteer events, recover a crashed onboarding worker, and clean up synthetic volunteer state:
-
-```bash
-make live-stack-up
-make live-volunteer-surge-drill-profile PROFILE=urban_flood VERBOSE_FLAGS=-v
-make live-stack-down
-```
-
-Use verbosity intentionally:
-
-```text
-no flag        routine validation / CI-friendly PASS or FAIL
--v             quick operator summary
--vv            demo/story evidence for reviewers
--vvv           debug/cleanup proof, including queue service final state
-```
-
-Increase evidence detail with `VERBOSE_FLAGS=-vv` or `VERBOSE_FLAGS=-vvv`. Direct CLI commands also accept `-v`, `-vv`, and `-vvv`:
-
-```bash
-PYTHONPATH=src python3 -m reliefqueue.cli live-volunteer-surge-drill -vv
-```
-
-The drill does **not** send real messages, poll real phones, store raw phone numbers, or assign volunteers without coordinator review. Mass phone-presence polling remains gated until there is lawful authority, provider integration, opt-out/rate-limit controls, approved templates, human-supervised call-center handling, and a retention policy.
-
-The main evidence report is:
-
-```text
-reports/latest/live_integrations/volunteer-surge/live_volunteer_surge_drill.json
-```
-
-### Prove implementation milestone live infrastructure
-
-Use this path on a trusted host such as your laptop or an OCI Ubuntu/Debian-style VM:
+Advanced host proof remains available through:
 
 ```bash
 make phase01-host-preflight
@@ -206,150 +208,10 @@ make phase01-live-proof
 make phase01-live-clean
 ```
 
-If host preflight reports Docker/Compose is missing or unusable, inspect the scope first:
+Discover less-common commands through the operator catalog:
 
 ```bash
-make operator-scope ACTION=phase01_host_setup
+make operator
+make operator-search QUERY="test live integration"
+make operator-scope ACTION=phase01_live_stack
 ```
-
-Then run guarded setup only when you accept the host changes:
-
-```bash
-printf 'YES
-' | make phase01-host-setup
-```
-
-The setup command is intentionally guarded. It should not install packages, modify groups, or start services without explicit `YES`.
-
-### Check AI/provider boundary
-
-AI is optional and advisory. Offline/mock validation remains the default:
-
-```bash
-make ai-endpoint-smoke AI_MODE=mock
-make bad-ai-endpoint-smoke
-make no-secrets
-```
-
-Configured real endpoint smoke is allowed only with sanitized diagnostics and review-required AI output.
-
-### Judge-facing live AMD challenge mode
-
-The public AMD Impact route supports three explicitly synthetic, human-reviewed workloads:
-
-```text
-/dashboard/amd-impact
-Single incident | Complex dossier | Burst workload (up to 24 reports)
-```
-
-The live path is `POST /api/ai/live-verification` and `POST /api/ai/burst-verification`. The ordinary Command Center workflow advisory is a deterministic product demonstration and must not be presented as live AMD inference. A response is labelled **VERIFIED LIVE** only after provider transport succeeds, the challenge nonce is echoed, structured output passes validation, no fallback is used, and human review remains required.
-
-Configure the deployed backend with server-side secrets; never expose these values to browser code:
-
-```text
-AI_MODE=openai_compatible
-OPENAI_COMPAT_BASE_URL=https://<private-or-protected-vllm-host>/v1
-OPENAI_COMPAT_API_KEY=<deployment-secret>
-OPENAI_COMPAT_MODEL=reliefqueue-amd
-AI_PROVIDER_LABEL=AMD Developer Cloud
-AI_ACCELERATOR_LABEL=AMD Instinct MI300X
-AI_RUNTIME_LABEL=vLLM 0.23.0
-```
-
-The public judge mode applies bounded input, concurrency, per-client, and global request budgets. Inputs must be synthetic and contain no real personal or medical identifiers. The correct claim is that AMD MI300X plus vLLM makes concurrent structured analysis operationally practical and measurable; the project does not claim that no other hardware or model could process the same input.
-
-Run the reusable evaluator offline by default, or opt into a bounded trusted live run:
-
-```bash
-make amd-quality-offline-validation
-RELIEFQUEUE_CONFIRM_LIVE_AMD=YES AI_MODE=openai_compatible make amd-quality-live-validation
-```
-
-After public deployment, verify ordinary routes without provider calls, then run the separate opt-in live AMD proof:
-
-```bash
-RELIEFQUEUE_PUBLIC_URL=https://your-public-url.example make submission-public-check
-RELIEFQUEUE_PUBLIC_URL=https://your-public-url.example \
-RELIEFQUEUE_CONFIRM_LIVE_AMD=YES make submission-live-amd-check
-```
-
-### Submission package and final gate
-
-```bash
-make submission-pack
-make submission-final-gate
-```
-
-The final gate intentionally removes provider credentials and forces mock mode, so it proves product safety and reproducibility—not current AMD endpoint availability. The separate `submission-live-amd-check` is the deployment-time proof of real provider execution. Generated reports remain local artifacts and are not source-controlled; the frozen authoritative campaign is `fixtures/amd_evidence_campaign_v1.json`.
-
-## Safety boundary
-
-ReliefQueue may suggest urgency, duplicates, operation zones, missing information, assignment candidates, reply drafts, and public redacted summaries.
-
-ReliefQueue must not claim auto-dispatch, confirmed rescue, confirmed safety, guaranteed location, AI-verified emergency status, or field-worker arrival. A human coordinator approves priority, assignment, field instructions, public communication, and closure.
-
-Public exports and field-worker views must not expose raw contact details, raw report text, full private names, exact private addresses, unnecessary medical details, worker private contacts, secrets, or unredacted media.
-
-## Living reference docs
-
-The primary guide is the operator catalog. Retained docs are intentionally few:
-
-```text
-docs/living-guide.md              how docs stay useful and discoverable
-docs/safety-boundary.md           product, privacy, field-worker, and export boundaries
-docs/ai-boundary.md               optional AI/OpenAI-compatible/vLLM boundary
-docs/pilot-readiness.md           pilot, risk, privacy/legal, field SOP, and production gaps
-docs/project-knowledge/           small local-AI knowledge layer used by local-ai commands
-```
-
-Check that the docs remain current and discoverable:
-
-```bash
-make docs-check
-```
-
-## Repository fixtures
-
-```text
-fixtures/reliefqueue_seed_reports.jsonl
-fixtures/operation_zones.json
-fixtures/field_workers.json
-```
-
-## Validation baseline
-
-```bash
-make test
-make operator-catalog-check
-make docs-check
-make privacy-check
-make integration-smoke
-```
-
-## Local portals
-
-Print the local command-center and field mobile URLs:
-
-```bash
-make portal-urls
-```
-
-Run the command-center portal:
-
-```bash
-make view-dashboard
-```
-
-Run the field mobile view:
-
-```bash
-make view-field
-```
-
-For a phone or Android emulator, use:
-
-```bash
-make view-field-mobile
-```
-
-For the docs map and maintainer guidance, see `docs/index.md` and run `make change-guide` before starting a change.

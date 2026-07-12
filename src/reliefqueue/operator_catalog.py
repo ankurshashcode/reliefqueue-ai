@@ -42,22 +42,6 @@ class OperatorAction:
 def actions() -> tuple[OperatorAction, ...]:
     return (
         OperatorAction(
-            id="docs_living_guide",
-            title="Check living guide and documentation drift",
-            category="Documentation",
-            when=("docs", "documentation", "living guide", "what docs matter", "remove stale docs"),
-            commands=("make docs-check",),
-            scope=("Checks that retained docs are current, discoverable, and not obsolete slice history.",),
-            does_not=("Does not rewrite docs or change runtime behavior.",),
-            side_effects=("No source/runtime side effects; prints a docs drift report.",),
-            requires=("README.md, docs/living-guide.md, and retained docs.",),
-            reports=("console output only",),
-            cleanup=("No cleanup needed.",),
-            safe_to_repeat="Yes. It is read-only.",
-            risk_level="none",
-            next_steps=('make operator-search QUERY="test live integration"',),
-        ),
-        OperatorAction(
             id="demo_local",
             title="Run deterministic local demo",
             category="Local demo",

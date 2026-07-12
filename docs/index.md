@@ -1,34 +1,28 @@
-# ReliefQueue docs map
+# Documentation Map
 
-This repository should be understandable from the UI, make targets, and a small set of public docs. Prefer changing code names, command output, or validation checks before adding another long document.
+Start with the shortest document that answers the question.
 
-## Start here
+## Hackathon and judges
 
-| Need | Use | Why |
-| --- | --- | --- |
-| Run or demo ReliefQueue | `README.md` and `make portal-urls` | Quick public entry point and local portal URLs. |
-| See the web/mobile portals | `make view-dashboard`, `make view-field`, or `make view-field-mobile` | Starts the local dashboard and prints the command-center and field URLs. |
-| Decide whether to add or remove docs | `docs/living-guide.md` | Keeps docs small and avoids stale process notes. |
-| Change AI, triage, dispatch wording, privacy, or public exports | `docs/safety-boundary.md` | Safety and human-review rules belong here. |
-| Prepare for a pilot or public demo | `docs/pilot-readiness.md` | Readiness state, constraints, and remaining gaps. |
-| Decide which checks/docs apply to your current edits | `make change-guide` | Reads changed files and suggests relevant docs and validation gates. |
+| Document | Use |
+| --- | --- |
+| [`README.md`](../README.md) | Product, demo, architecture, AMD summary, and local run |
+| [`HACKATHON.md`](../HACKATHON.md) | Copy-ready submission text and judge walkthrough |
+| [`amd-evidence.md`](amd-evidence.md) | Exact AMD/vLLM evidence, live-proof contract, and limitations |
 
-Before changing code or docs: `make change-guide`.
+## Technical references
 
-## Daily maintainer flow
+| Document | Use |
+| --- | --- |
+| [`development.md`](development.md) | Setup, repository structure, deployment, and validation |
+| [`operations.md`](operations.md) | Advanced drills, live stack, host proof, and evidence paths |
+| [`safety-boundary.md`](safety-boundary.md) | Human authority, privacy, field minimization, and exports |
+| [`ai-boundary.md`](ai-boundary.md) | Provider, output, fallback, and live-inference boundaries |
+| [`pilot-readiness.md`](pilot-readiness.md) | Work required before real-world use |
+| [`living-guide.md`](living-guide.md) | Documentation ownership and drift rules |
 
-```bash
-make change-guide
-make test
-make dashboard-build
-make dashboard-smoke
-make field-smoke
-make product-smoke
-make public-ship-check
-```
+## Internal maintainer references
 
-For small documentation-only edits, `make docs-index-check` and `make public-ship-check` are usually the minimum checks.
+- `project-knowledge/`: small, durable context used by local-AI review commands.
 
-## Documentation rule
-
-Keep public docs about the product and operator workflow. Keep private sandbox/process guidance outside this repository. If a rule is important enough to preserve, prefer a repo-owned make check so future maintainers do not need to remember it manually.
+After documentation edits, run `git diff --check` and review local Markdown links.

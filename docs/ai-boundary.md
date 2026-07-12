@@ -1,8 +1,10 @@
 # AI Boundary
 
-AI use in ReliefQueue is optional, advisory, and review-required. Deterministic local behavior must remain available when no provider is configured.
+AI in ReliefQueue is optional, advisory, and review-required. The deterministic workflow must remain available when no provider is configured or when a provider fails.
 
-## Default modes
+## Deterministic default
+
+Safe local checks:
 
 ```bash
 make ai-endpoint-smoke AI_MODE=mock
@@ -10,20 +12,38 @@ make bad-ai-endpoint-smoke
 make no-secrets
 ```
 
-`AI_MODE=none` and `AI_MODE=mock` must remain safe local paths. Missing external provider configuration should be a clear SKIP/degraded PASS, not a hidden failure.
+`AI_MODE=none` and `AI_MODE=mock` must remain usable. Missing provider configuration should produce a clear offline, skipped, or degraded state—not a false live claim.
 
-## OpenAI-compatible endpoint boundary
+## Provider boundary
 
-Real provider smoke may be run with an OpenAI-compatible endpoint only when secrets are passed through environment variables and logs redact secret values. Diagnostics should show sanitized endpoint/model, HTTP/provider failure class, parsed JSON keys when available, and validation reason. Do not print the full shell environment or private report text.
+ReliefQueue uses an OpenAI-compatible adapter so the workflow is not tied to one model vendor. Secrets are supplied through server-side environment variables and must never appear in browser code, logs, public exports, or screenshots.
 
-AI output must be a flat advisory object that passes strict validation. Successful provider output must still set human review required and must not overwrite deterministic dispatch, rescue, safety, closure, or verified-location fields.
+Diagnostics may expose sanitized provider labels, model labels, status classes, latency, token counts, parsed-key summaries, and validation reasons. They must not expose credentials, full environments, or private report text.
 
-## AMD/vLLM readiness
+## Output contract
 
-The boundary is provider-independent: models should be replaceable per job. Local/self-hosted vLLM on AMD hardware is a future deployment option, not a requirement for deterministic demos.
+Provider output must:
 
-Keep the adapter compatible with OpenAI-style chat/completion endpoints where practical, but do not add provider-specific assumptions to the crisis workflow.
+- pass strict schema and semantic checks;
+- preserve source coverage for dossier inputs;
+- remain bound to the request challenge where live verification is used;
+- state that human review is required;
+- never overwrite deterministic dispatch, rescue, safety, closure, or verified-location fields.
 
-## Fallback rule
+## AMD/vLLM path
 
-If AI is unavailable, slow, malformed, or unsafe, ReliefQueue keeps the deterministic queue output and reports the AI limitation clearly. Operators should still be able to run demos, privacy checks, dashboard checks, and live infrastructure proof without real AI.
+ReliefQueue has a verified historical campaign on AMD Developer Cloud using AMD Instinct MI300X and vLLM. That evidence is documented in [amd-evidence.md](amd-evidence.md).
+
+The ordinary workflow advisory is deterministic and must not be described as live AMD inference. A current request is live only when its request-level verification contract passes.
+
+## Failure and fallback
+
+When AI is unavailable, slow, malformed, incomplete, or unsafe:
+
+1. keep the deterministic queue result;
+2. show the provider limitation clearly;
+3. do not label the request verified;
+4. do not hide fallback use;
+5. keep human review required.
+
+Provider failure must not block local demos, privacy checks, field workflows, public exports, or deterministic submission validation.
