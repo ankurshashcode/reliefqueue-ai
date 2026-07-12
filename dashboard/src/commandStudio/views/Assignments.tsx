@@ -117,9 +117,9 @@ export function Assignments() {
       priority: selectedTask.urgent ? 'CRITICAL' : 'HIGH',
       needType: 'Logistics',
       locationConfidence: 'Medium',
-      inferenceMode: response.model_detail || 'Deterministic Fallback',
-      providerStatus: response.status || 'completed',
-      latency: 'Recorded',
+      inferenceMode: 'Deterministic Local Advisory',
+        providerStatus: 'Not contacted',
+        latency: 'Local · no provider call',
       warnings: response.human_review_required ? ['Coordinator approval required before any field action.'] : [],
       questions: ['Confirm the latest field status before assignment.']
     });

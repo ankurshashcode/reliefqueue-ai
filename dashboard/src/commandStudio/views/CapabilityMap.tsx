@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Server, CheckCircle, ShieldCheck, Zap, RefreshCw, Hash, Clock } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { readJsonResponse } from '../lib/httpJson';
 import { AmdEvidenceSummary } from '../components/AmdEvidenceSummary';
 import {
   buildReviewerNotes,
@@ -86,9 +87,8 @@ export function CapabilityMap() {
         fetch('/api/product/command/overview', { cache: 'no-store' }),
         fetchAmdCapability(),
       ]);
-      if (!healthResponse.ok || !overviewResponse.ok) throw new Error(`HTTP ${healthResponse.status}/${overviewResponse.status}`);
-      const health = await healthResponse.json();
-      const overview = await overviewResponse.json();
+      const health = await readJsonResponse<any>(healthResponse, 'Health check');
+      const overview = await readJsonResponse<any>(overviewResponse, 'Product API overview');
       setCapability(capabilityPayload);
       setRuntime({
         loading: false,
@@ -100,8 +100,8 @@ export function CapabilityMap() {
       if (announce) showToast('Product API, AMD evidence, and health status refreshed.', 'success');
     } catch (error: any) {
       setRuntime({ loading: false, health: 'Unavailable', api: 'Unavailable', contract: 'Unavailable', cases: 0 });
-      setCapabilityError(error?.message || 'Unknown error');
-      if (announce) showToast(`Runtime status unavailable: ${error.message}`, 'error');
+      setCapabilityError(error?.message || 'Product API is unavailable.');
+      if (announce) showToast(`Runtime status unavailable: ${error?.message || 'unknown error'}`, 'error');
     }
   };
 
@@ -113,21 +113,26 @@ export function CapabilityMap() {
       const res = await fetch('/api/ai/live-verification', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          workload_mode: 'single',
+          synthetic_confirmed: true,
+          text: 'Synthetic capability-path test: identify flood-response priorities, uncertainties, and required coordinator checks.',
+        }),
       });
-      const data: AmdTestResult = await res.json();
+      const data = await readJsonResponse<AmdTestResult>(res, 'AMD capability-path test');
       setAmdTestResult(data);
       setCurrentRequest(currentRequestFromLiveResult(data));
     } catch (err: any) {
       const failure: AmdTestResult = {
         verified_live: false,
-        fallback_used: true,
+        fallback_used: false,
         request_id: null,
         verified_at: null,
         latency_ms: null,
         underlying_model: null,
         served_model: null,
         generated_advisory: null,
-        error: err?.message || 'Network request failed',
+        error: err?.message || 'AMD capability-path test failed.',
       };
       setAmdTestResult(failure);
       setCurrentRequest(currentRequestFromLiveResult(failure));
@@ -139,10 +144,10 @@ export function CapabilityMap() {
   const checkPublicConfig = async () => {
     try {
       const res = await fetch('/api/product/production/config', { cache: 'no-store' });
-      const data = await res.json();
+      const data = await readJsonResponse<any>(res, 'Public configuration');
       showToast(`Config: ${data.cors_mode || 'ok'} · HTTPS expected: ${data.https_expected}`, 'info');
-    } catch {
-      showToast('Public config check failed.', 'error');
+    } catch (error: any) {
+      showToast(error?.message || 'Public config check failed.', 'error');
     }
   };
 

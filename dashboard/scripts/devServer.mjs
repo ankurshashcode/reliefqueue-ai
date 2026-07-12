@@ -7,7 +7,7 @@ const dashboardRoot = path.resolve(__dirname, '..');
 const viteBin = path.resolve(dashboardRoot, 'node_modules', 'vite', 'bin', 'vite.js');
 const parentPid = process.ppid;
 
-const child = spawn(process.execPath, [viteBin, ...process.argv.slice(2)], {
+const forwardedArgs = process.argv.slice(2); const hasExplicitConfig = forwardedArgs.some((arg) => arg === '--config' || arg.startsWith('--config=')); const viteArgs = hasExplicitConfig ? [viteBin, ...forwardedArgs] : [viteBin, '--config', path.resolve(dashboardRoot, 'vite.config.ts'), ...forwardedArgs]; const child = spawn(process.execPath, viteArgs, {
   cwd: dashboardRoot,
   stdio: 'inherit',
   env: process.env,

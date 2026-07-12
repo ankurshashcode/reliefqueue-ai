@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useApp } from '../context/AppContext';
+import { readJsonResponse } from '../lib/httpJson';
 import { Bot, Link as LinkIcon, AlertTriangle, ShieldAlert, FileText, Share2, Check, Smartphone, MessageSquare, Zap, XCircle } from 'lucide-react';
 import { productApi } from '../lib/productApi';
 
@@ -51,8 +52,7 @@ export function IntakeFusion() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ workload_mode: 'single', text: normalizedMsg.original.text, synthetic_confirmed: true }),
       });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data?.error || `HTTP ${response.status}`);
+      const data = await readJsonResponse<any>(response, 'AMD intake advisory');
       setAdvisoryResult(data);
       addLog('Run AMD/vLLM Advisory', 'Quality', data.verified_live ? 'Success' : 'Review Required', {
         ref: normalizedMsg.original.id,

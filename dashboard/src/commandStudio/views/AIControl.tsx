@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Cpu, ShieldAlert, CheckCircle, Lock, ShieldCheck, Bot, XCircle, RefreshCw, Hash, Clock, Zap } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { readJsonResponse } from '../lib/httpJson';
 
 interface ConnectionResult {
   verified_live: boolean;
@@ -24,23 +25,28 @@ export function AIControl() {
   const handleTestConnection = async () => {
     setTestLoading(true);
     setConnectionResult(null);
-    addLog('Test Connection Started', 'Contacting AMD Developer Cloud vLLM endpoint…');
+    addLog('Test Connection Started', 'Contacting the configured AMD/vLLM endpoint with synthetic demonstration data…');
     try {
       const res = await fetch('/api/ai/live-verification', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          workload_mode: 'single',
+          synthetic_confirmed: true,
+          text: 'Synthetic connection test: prioritize a flood rescue report, identify missing facts, and require coordinator review.',
+        }),
       });
-      const data: ConnectionResult = await res.json();
+      const data = await readJsonResponse<ConnectionResult>(res, 'AMD connection test');
       setConnectionResult(data);
       if (data.verified_live && !data.fallback_used) {
         addLog('Connection Verified', `Request ${data.request_id} · ${data.latency_ms} ms · Model: ${data.underlying_model}`);
       } else {
-        addLog('Connection Failed', data.error || 'AMD endpoint did not return a live result.');
+        addLog('Connection Not Verified', data.error || 'The request did not establish a verified-live provider result.');
       }
     } catch (err: any) {
       setConnectionResult({
         verified_live: false,
-        fallback_used: true,
+        fallback_used: false,
         request_id: null,
         verified_at: null,
         latency_ms: null,
@@ -48,9 +54,9 @@ export function AIControl() {
         underlying_model: null,
         generated_advisory: null,
         warnings: [],
-        error: err?.message || 'Network request failed',
+        error: err?.message || 'AMD connection test failed.',
       });
-      addLog('Connection Failed', err?.message || 'Network request failed');
+      addLog('Connection Failed', err?.message || 'AMD connection test failed.');
     } finally {
       setTestLoading(false);
     }
@@ -119,7 +125,7 @@ export function AIControl() {
                 <EvidenceRow
                   icon={<ShieldAlert className="w-3.5 h-3.5" />}
                   label="Live / Fallback"
-                  value={connectionResult.verified_live && !connectionResult.fallback_used ? 'Live — no fallback' : 'Fallback used'}
+                  value={connectionResult.verified_live && !connectionResult.fallback_used ? 'Live — no fallback' : connectionResult.fallback_used ? 'Fallback used' : 'Not verified live'}
                 />
               </div>
               {connectionResult.generated_advisory && (

@@ -1,3 +1,4 @@
+import { readJsonResponse } from './httpJson';
 export interface AmdDeploymentEvidence {
   provider: string;
   accelerator: string;
@@ -84,10 +85,9 @@ export interface AmdCapabilityPayload {
 
 export async function fetchAmdCapability(): Promise<AmdCapabilityPayload> {
   const response = await fetch('/api/product/amd/capability', { cache: 'no-store' });
-  if (!response.ok) throw new Error(`AMD capability HTTP ${response.status}`);
-  const payload = await response.json() as AmdCapabilityPayload;
+  const payload = await readJsonResponse<AmdCapabilityPayload>(response, 'AMD evidence');
   if (payload?.status !== 'ok' || !payload?.historical_evidence || !payload?.live_runtime) {
-    throw new Error('AMD capability response is incomplete');
+    throw new Error('AMD evidence: capability response is incomplete.');
   }
   return payload;
 }

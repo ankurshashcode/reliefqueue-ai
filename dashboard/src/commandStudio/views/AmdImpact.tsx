@@ -1,3 +1,4 @@
+import { readJsonResponse } from '../lib/httpJson';
 import { useEffect, useState } from 'react';
 import {
   Cpu, Zap, Activity, ShieldAlert, Bot, Server, CheckCircle, XCircle,
@@ -296,7 +297,7 @@ export function AmdImpact() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: singleInput, workload_mode: 'single', synthetic_confirmed: true }),
       });
-      const data: LiveResult = await res.json();
+      const data = await readJsonResponse<LiveResult>(res, 'Live AMD analysis');
       setSingleResult(data);
       setLastRequest(currentRequestFromLiveResult(data));
       if (isVerified(data)) setLastVerifiedMetadata({ ...data, ...(data.model_metadata || {}) });
@@ -332,7 +333,7 @@ export function AmdImpact() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: dossierInput, workload_mode: 'complex_dossier', synthetic_confirmed: true }),
       });
-      const data: LiveResult = await res.json();
+      const data = await readJsonResponse<LiveResult>(res, 'Live AMD analysis');
       setDossierResult(data);
       setLastRequest(currentRequestFromLiveResult(data));
       if (isVerified(data)) setLastVerifiedMetadata({ ...data, ...(data.model_metadata || {}) });
@@ -364,8 +365,7 @@ export function AmdImpact() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: burstInput }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || data?.message || 'Unable to parse burst workload.');
+      const data = await readJsonResponse<any>(res, 'Burst workload parser');
       setParsedCases(data.cases);
       setParseError(null);
     } catch (err: any) {
@@ -386,8 +386,7 @@ export function AmdImpact() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ reports: parsedCases, concurrency: burstConcurrency, synthetic_confirmed: true }),
       });
-      const data: BurstResult = await res.json();
-      if ((data as any).error) throw new Error((data as any).error);
+      const data = await readJsonResponse<BurstResult>(res, 'Live AMD burst');
       setBurstResult(data);
       setLastRequest(currentRequestFromBurstResult(data));
       if (data.verified_live === true && Number(data.fallback_responses || 0) === 0) {

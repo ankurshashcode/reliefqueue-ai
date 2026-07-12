@@ -108,11 +108,11 @@ export function Overview() {
               </div>
               <div className="text-xs text-slate-500 mt-1">Assignment Suggestions Pending Review</div>
             </div>
-            <div className="bg-white p-3 rounded-lg border border-blue-100 col-span-2 md:col-span-1 cursor-pointer hover:shadow-sm transition-shadow">
+            <div className="bg-white p-3 rounded-lg border border-blue-100 col-span-2 md:col-span-1 cursor-pointer hover:shadow-sm transition-shadow" data-testid="overview-missing-info-card" role="button" tabIndex={0} onClick={() => handleMetricClick('intake', 'Missing-info prompts')} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); handleMetricClick('intake', 'Missing-info prompts'); } }}>
               <div className="text-xl font-bold text-slate-900">4 <span className="text-sm font-normal text-slate-500 ml-1">prompts</span></div>
               <div className="text-xs text-slate-500">Missing-info prompts prepared</div>
             </div>
-            <div className="bg-white p-3 rounded-lg border border-blue-100 col-span-2 md:col-span-1 cursor-pointer hover:shadow-sm transition-shadow">
+            <div className="bg-white p-3 rounded-lg border border-blue-100 col-span-2 md:col-span-1 cursor-pointer hover:shadow-sm transition-shadow" data-testid="overview-malformed-output-card" role="button" tabIndex={0} onClick={() => handleMetricClick('quality', 'Malformed output review')} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); handleMetricClick('quality', 'Malformed output review'); } }}>
               <div className="flex items-center justify-between">
                 <div>
                   <div className="text-xl font-bold text-slate-900">1 <span className="text-sm font-normal text-slate-500 ml-1">rejected</span></div>
