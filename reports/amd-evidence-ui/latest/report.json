@@ -1,0 +1,34 @@
+{
+  "status": "PASS",
+  "runner": "Playwright Chromium",
+  "provider_calls": 0,
+  "api_mode": "mock",
+  "historical_evidence_preserved_after_request_test": true,
+  "routes": [
+    {
+      "route": "/dashboard/amd-impact",
+      "historical_resolved": "24 / 24 resolved",
+      "historical_scope": "Staged composite · not a uniform production-prompt run",
+      "runtime_status": "Not configured in this process",
+      "request_status_before_test": "Not attempted on this screen",
+      "human_review_status": "Required",
+      "screenshot": "reports/amd-evidence-ui/latest/screenshots/amd-impact-before-request.png",
+      "inference_mode": "INFERENCE MODE Historical evidence only Live status is established per request; fallback is never counted as verified"
+    },
+    {
+      "route": "/dashboard/capability-map",
+      "historical_resolved": "24 / 24 resolved",
+      "historical_scope": "Staged composite · not a uniform production-prompt run",
+      "runtime_status": "Not configured in this process",
+      "request_status_before_test": "Not attempted on this screen",
+      "human_review_status": "Required",
+      "screenshot": "reports/amd-evidence-ui/latest/screenshots/capability-map-before-request.png",
+      "current_ai_runtime": "Current AI Runtime: Configuration: Not configured in this process Provider: Not claimed Accelerator: Not claimed Runtime: Not claimed Served model: Not claimed Human review: Required Fallback available: Yes"
+    }
+  ],
+  "current_request_status_after_mock_test": "Fallback used — not verified live",
+  "console_errors": [],
+  "page_errors": [],
+  "failed_requests": [],
+  "failed_responses": []
+}

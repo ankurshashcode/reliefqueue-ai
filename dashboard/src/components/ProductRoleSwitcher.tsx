@@ -29,6 +29,8 @@ export function ProductRoleSwitcher({
     <details className="group relative shrink-0">
       <summary
         aria-label="Switch ReliefQueue workspace"
+        data-testid="workspace-current-role"
+        data-current-role={currentRole}
         className={`list-none cursor-pointer select-none rounded-lg border px-2 py-2 text-xs font-bold shadow-sm transition-colors sm:px-3 ${summaryClass}`}
       >
         <span className="inline-flex items-center gap-2">

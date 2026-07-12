@@ -22,7 +22,8 @@
     "visual-port-smoke": "node scripts/visualPortSmoke.mjs",
     "messaging-channel-smoke": "node scripts/messagingChannelSmoke.mjs",
     "prepare-public-data": "node scripts/preparePublicData.mjs",
-    "replit-navigation-smoke": "node scripts/replitNavigationCheck.mjs"
+    "replit-navigation-smoke": "node scripts/replitNavigationCheck.mjs",
+    "amd-evidence-ui-check": "node scripts/amdEvidenceUiCheck.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-react": "^5.0.4",

@@ -1,8 +1,17 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Cpu, Zap, Activity, ShieldAlert, Bot, Server, CheckCircle, XCircle,
   RefreshCw, Clock, Hash, Layers, AlertTriangle, FileText, List,
 } from 'lucide-react';
+import { AmdEvidenceSummary } from '../components/AmdEvidenceSummary';
+import {
+  currentRequestFromBurstResult,
+  currentRequestFromLiveResult,
+  fetchAmdCapability,
+  pendingCurrentRequest,
+  type AmdCapabilityPayload,
+  type CurrentRequestPlane,
+} from '../lib/amdEvidence';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -230,16 +239,49 @@ export function AmdImpact() {
   const [burstResult, setBurstResult] = useState<BurstResult | null>(null);
   const [expandedCases, setExpandedCases] = useState<Set<string>>(new Set());
 
-  const latestMetadata = burstResult?.model_metadata || dossierResult?.model_metadata || singleResult?.model_metadata || null;
-  const displayedProvider = latestMetadata?.provider || 'AMD Developer Cloud';
-  const displayedAccelerator = latestMetadata?.accelerator || 'AMD Instinct MI300X';
-  const displayedRuntime = latestMetadata?.runtime || 'Reported after live verification';
-  const displayedModel = latestMetadata?.underlying_model || latestMetadata?.served_model || 'Reported after live verification';
+  // Frozen historical evidence, current configuration, and current-request state
+  // are deliberately loaded and displayed as separate planes.
+  const [capability, setCapability] = useState<AmdCapabilityPayload | null>(null);
+  const [capabilityLoading, setCapabilityLoading] = useState(true);
+  const [capabilityError, setCapabilityError] = useState<string | null>(null);
+  const [lastRequest, setLastRequest] = useState<CurrentRequestPlane | null>(null);
+  const [lastVerifiedMetadata, setLastVerifiedMetadata] = useState<any | null>(null);
+
+  const refreshEvidence = async () => {
+    setCapabilityLoading(true);
+    setCapabilityError(null);
+    try {
+      setCapability(await fetchAmdCapability());
+    } catch (error: any) {
+      setCapabilityError(error?.message || 'Unknown error');
+    } finally {
+      setCapabilityLoading(false);
+    }
+  };
+
+  useEffect(() => { void refreshEvidence(); }, []);
+
+  const historicalDeployment = capability?.historical_evidence?.deployment || null;
+  const latestMetadata = lastVerifiedMetadata;
+  const metadataSource = latestMetadata ? 'Latest verified request' : historicalDeployment ? 'Historical verified campaign' : 'Evidence unavailable';
+  const displayedProvider = latestMetadata?.provider || historicalDeployment?.provider || 'Not reported';
+  const displayedAccelerator = latestMetadata?.accelerator || historicalDeployment?.accelerator || 'Not reported';
+  const displayedRuntime = latestMetadata?.runtime || historicalDeployment?.runtime || 'Not reported';
+  const displayedModel = latestMetadata?.underlying_model || latestMetadata?.served_model || historicalDeployment?.underlying_model || historicalDeployment?.served_model || 'Not reported';
   const displayedModelSub = latestMetadata?.underlying_model
-    ? `Served as: ${latestMetadata?.served_model || 'not reported'}`
+    ? `Latest verified request · served as ${latestMetadata?.served_model || 'not reported'}`
     : latestMetadata?.served_model
-      ? 'Underlying model not reported by endpoint'
-      : 'No hard-coded model claim';
+      ? 'Latest verified request · underlying model not reported'
+      : historicalDeployment
+        ? `Historical campaign · served as ${historicalDeployment.served_model}`
+        : 'No model claim available';
+  const inferenceMode = lastRequest?.verified_live
+    ? 'Verified live request'
+    : capability?.live_runtime?.configured
+      ? 'Configured · not live verified'
+      : capability
+        ? 'Historical evidence only'
+        : 'Checking evidence';
 
   // ── Single Incident ──────────────────────────────────────────────────────
 
@@ -247,6 +289,7 @@ export function AmdImpact() {
     if (!singleConsent) return;
     setSingleLoading(true);
     setSingleResult(null);
+    setLastRequest(pendingCurrentRequest('Single-incident live verification is in progress.'));
     try {
       const res = await fetch('/api/ai/live-verification', {
         method: 'POST',
@@ -255,8 +298,10 @@ export function AmdImpact() {
       });
       const data: LiveResult = await res.json();
       setSingleResult(data);
+      setLastRequest(currentRequestFromLiveResult(data));
+      if (isVerified(data)) setLastVerifiedMetadata({ ...data, ...(data.model_metadata || {}) });
     } catch (err: any) {
-      setSingleResult({
+      const failure: LiveResult = {
         status: 'failed', verified_live: false, provider: 'AMD Developer Cloud',
         runtime: null, accelerator: 'AMD Instinct MI300X',
         served_model: null, underlying_model: null,
@@ -266,7 +311,9 @@ export function AmdImpact() {
         generated_advisory: null,
         warnings: ['Network error contacting verification endpoint.'],
         error: err?.message || 'Network request failed',
-      });
+      };
+      setSingleResult(failure);
+      setLastRequest(currentRequestFromLiveResult(failure));
     } finally {
       setSingleLoading(false);
     }
@@ -278,6 +325,7 @@ export function AmdImpact() {
     if (!dossierConsent || !dossierInput.trim()) return;
     setDossierLoading(true);
     setDossierResult(null);
+    setLastRequest(pendingCurrentRequest('Complex-dossier live verification is in progress.'));
     try {
       const res = await fetch('/api/ai/live-verification', {
         method: 'POST',
@@ -286,8 +334,10 @@ export function AmdImpact() {
       });
       const data: LiveResult = await res.json();
       setDossierResult(data);
+      setLastRequest(currentRequestFromLiveResult(data));
+      if (isVerified(data)) setLastVerifiedMetadata({ ...data, ...(data.model_metadata || {}) });
     } catch (err: any) {
-      setDossierResult({
+      const failure: LiveResult = {
         status: 'failed', verified_live: false, provider: 'AMD Developer Cloud',
         runtime: null, accelerator: 'AMD Instinct MI300X',
         served_model: null, underlying_model: null,
@@ -297,7 +347,9 @@ export function AmdImpact() {
         generated_advisory: null,
         warnings: ['Network error contacting verification endpoint.'],
         error: err?.message || 'Network request failed',
-      });
+      };
+      setDossierResult(failure);
+      setLastRequest(currentRequestFromLiveResult(failure));
     } finally {
       setDossierLoading(false);
     }
@@ -327,6 +379,7 @@ export function AmdImpact() {
     setBurstLoading(true);
     setBurstResult(null);
     setExpandedCases(new Set());
+    setLastRequest(pendingCurrentRequest('Burst live verification is in progress.'));
     try {
       const res = await fetch('/api/ai/burst-verification', {
         method: 'POST',
@@ -336,7 +389,18 @@ export function AmdImpact() {
       const data: BurstResult = await res.json();
       if ((data as any).error) throw new Error((data as any).error);
       setBurstResult(data);
+      setLastRequest(currentRequestFromBurstResult(data));
+      if (data.verified_live === true && Number(data.fallback_responses || 0) === 0) {
+        setLastVerifiedMetadata({ ...data, ...(data.cross_case_evidence || {}), ...(data.cross_case_evidence?.model_metadata || data.model_metadata || {}) });
+      }
     } catch (err: any) {
+      setLastRequest({
+        attempted: true,
+        verified_live: false,
+        fallback_used: null,
+        provider_error: err?.message || 'Burst verification failed',
+        note: 'Burst verification did not establish a verified-live result.',
+      });
       alert(`Burst verification failed: ${err?.message || 'Unknown error'}`);
     } finally {
       setBurstLoading(false);
@@ -360,15 +424,23 @@ export function AmdImpact() {
       <div className="mb-6">
         <h2 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">AMD GPU / vLLM Impact</h2>
         <p className="text-slate-500 mt-1">
-          Long-context, multilingual and concurrent humanitarian analysis accelerated by AMD Instinct MI300X.
+          Frozen AMD/vLLM campaign evidence plus opt-in, nonce-bound verification of the current request path.
         </p>
       </div>
 
-      {/* Infrastructure Info Cards — always factual, never "Pending" */}
+      <AmdEvidenceSummary
+        capability={capability}
+        loading={capabilityLoading}
+        error={capabilityError}
+        currentRequest={lastRequest}
+        onRefresh={() => void refreshEvidence()}
+      />
+
+      {/* Infrastructure cards identify whether values come from historical evidence or a verified request. */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-8">
-        <InfraCard icon={<Server className="w-4 h-4" />} label="Inference Mode" value="Live AMD/vLLM" sub="Fallback is visibly labelled and never counted as verified" />
-        <InfraCard icon={<Cpu className="w-4 h-4 text-rq-primary" />} label="AMD Accelerator" value={displayedAccelerator} sub={`Provider: ${displayedProvider}`} highlight />
-        <InfraCard icon={<Activity className="w-4 h-4" />} label="Runtime" value={displayedRuntime} sub="Backend deployment metadata; served model from provider response" />
+        <InfraCard testId="amd-inference-mode" icon={<Server className="w-4 h-4" />} label="Inference Mode" value={inferenceMode} sub="Live status is established per request; fallback is never counted as verified" />
+        <InfraCard icon={<Cpu className="w-4 h-4 text-rq-primary" />} label="AMD Accelerator" value={displayedAccelerator} sub={`${metadataSource} · ${displayedProvider}`} highlight />
+        <InfraCard icon={<Activity className="w-4 h-4" />} label="Runtime" value={displayedRuntime} sub={metadataSource} />
         <InfraCard icon={<Layers className="w-4 h-4" />} label="Active Model" value={displayedModel} sub={displayedModelSub} />
         <InfraCard icon={<ShieldAlert className="w-4 h-4 text-emerald-600" />} label="Data Safety" value="Synthetic input only" sub="Private text: false · Secrets: false" />
         <InfraCard icon={<CheckCircle className="w-4 h-4 text-amber-600" />} label="Human Review" value="Required" sub="No autonomous dispatch" amber />
@@ -751,8 +823,8 @@ export function AmdImpact() {
         <div className="p-4 text-xs text-slate-600">
           The Gemma 4 bonus lane is prepared for structured triage via the same OpenAI-compatible backend, but it is{' '}
           <strong>not active in this deployment.</strong>{' '}
-          The active served/underlying model identity is shown above only from live provider response and backend deployment metadata.
-          Human review is required regardless of which model is active.
+          The served/underlying model identity shown above is labelled by source: either the frozen historical campaign or a nonce-bound verified request.
+          Current runtime configuration alone is never presented as verified live. Human review is required regardless of which model is active.
         </div>
       </div>
     </div>
@@ -761,12 +833,12 @@ export function AmdImpact() {
 
 // ─── Shared Sub-Components ────────────────────────────────────────────────────
 
-function InfraCard({ icon, label, value, sub, highlight, amber }: {
+function InfraCard({ icon, label, value, sub, highlight, amber, testId }: {
   icon: React.ReactNode; label: string; value: string; sub: string;
-  highlight?: boolean; amber?: boolean;
+  highlight?: boolean; amber?: boolean; testId?: string;
 }) {
   return (
-    <div className={`rounded-xl border p-3 shadow-sm ${highlight ? 'bg-rq-primary/5 border-rq-primary/20' : amber ? 'bg-amber-50 border-amber-200' : 'bg-white border-slate-200'}`}>
+    <div data-testid={testId} className={`rounded-xl border p-3 shadow-sm ${highlight ? 'bg-rq-primary/5 border-rq-primary/20' : amber ? 'bg-amber-50 border-amber-200' : 'bg-white border-slate-200'}`}>
       <div className="flex items-center gap-1.5 text-slate-500 text-[10px] font-bold uppercase tracking-wider mb-1">
         {icon} {label}
       </div>

@@ -51,7 +51,7 @@ function MainLayout() {
 
   return (
     <div className="flex h-screen w-full bg-slate-50 overflow-hidden font-sans text-slate-900">
-      <Sidebar 
+      <Sidebar
         isOpen={isMobileMenuOpen}
         onClose={() => setIsMobileMenuOpen(false)}
       />
@@ -61,8 +61,9 @@ function MainLayout() {
           {/* Inference Mode Banner */}
           <div className="w-full bg-slate-900 border-b border-slate-800 px-4 py-2 flex items-center justify-center gap-2 shrink-0 z-10 relative">
             <span className="text-slate-200 text-xs font-mono font-medium text-center leading-tight">
-              Synthetic flood-response replay <span className="text-slate-500 mx-2">|</span> 
-              <span className="text-emerald-400">Live AMD/vLLM advisory inference</span> <span className="text-slate-500 mx-2">|</span> 
+              Synthetic flood-response replay <span className="text-slate-500 mx-2">|</span>
+              <span className="text-blue-300">AMD/vLLM evidence available</span> <span className="text-slate-500 mx-2">|</span>
+              <span className="text-emerald-400">Live status verified per request</span> <span className="text-slate-500 mx-2">|</span>
               <span className="text-amber-400">Coordinator approval required</span>
             </span>
           </div>

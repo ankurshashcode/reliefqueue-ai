@@ -349,9 +349,10 @@ class TestCapabilityMapTextAbsence(unittest.TestCase):
         self.assertNotIn("Frontend-only hosting. Requires the Python API", src)
         self.assertNotIn("Python-only alternate UI; does not apply to this React application", src)
 
-    def test_capability_map_section_renamed(self):
+    def test_capability_map_section_uses_current_status_wording(self):
         src = self._read_frontend_source("CapabilityMap.tsx")
-        self.assertIn("Live Deployment Status", src)
+        self.assertIn("Current Deployment Status", src)
+        self.assertNotIn("Live Deployment Status", src)
 
     def test_amd_impact_no_pending_verification_static(self):
         src = self._read_frontend_source("AmdImpact.tsx")

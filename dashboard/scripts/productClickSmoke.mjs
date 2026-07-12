@@ -271,16 +271,47 @@ async function checkFieldReloadPersistence(page) {
   };
 }
 
+const surfaceReadySelectors = {
+  "Command Center": '[data-testid="workspace-current-role"][data-current-role="command"]',
+  "Field Worker": '[data-testid="workspace-current-role"][data-current-role="field"]',
+  "Local Coordinator": '[data-testid="workspace-current-role"][data-current-role="local"]',
+  "Classic/debug only": '[data-result-id="internal.debug-notice"]'
+};
+
+async function waitForSurfaceReady(page, surface) {
+  const selector = surfaceReadySelectors[surface];
+  if (!selector) throw new Error(`missing readiness selector for surface: ${surface}`);
+
+  const main = page.locator("main").first();
+  await main.waitFor({ state: "visible", timeout: 15000 });
+
+  const runtimeError = page.locator('[data-testid="native-runtime-error"]').first();
+  if ((await runtimeError.count()) && (await runtimeError.isVisible())) {
+    throw new Error(`runtime error while loading ${surface}: ${normalize(await runtimeError.innerText())}`);
+  }
+
+  const loadingShell = page.locator('[data-testid="native-loading-shell"]').first();
+  if ((await loadingShell.count()) && (await loadingShell.isVisible())) {
+    await loadingShell.waitFor({ state: "hidden", timeout: 15000 });
+  }
+
+  const anchor = page.locator(selector).first();
+  await anchor.waitFor({ state: "visible", timeout: 15000 });
+  return {
+    selector,
+    text: normalize(await anchor.innerText())
+  };
+}
+
 async function routeCheck(page, route, surface) {
-  await page.goto(`${appOrigin}${route}`, { waitUntil: "networkidle" });
-  const title = surfaceTitles[surface];
-  const titleLocator = page.getByText(title, { exact: false }).first();
-  await titleLocator.waitFor({ timeout: 10000 });
+  await page.goto(`${appOrigin}${route}`, { waitUntil: "domcontentloaded" });
+  const ready = await waitForSurfaceReady(page, surface);
   return {
     route,
     loaded: true,
-    expected_surface_visible: await titleLocator.isVisible(),
-    observed_surface_title: normalize(await titleLocator.innerText())
+    expected_surface_visible: true,
+    readiness_selector: ready.selector,
+    observed_surface_title: ready.text
   };
 }
 
