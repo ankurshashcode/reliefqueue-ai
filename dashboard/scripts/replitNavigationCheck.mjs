@@ -170,13 +170,11 @@ try {
   ]);
   await page.getByRole('button', { name: 'Capability Map', exact: true }).click();
   await page.waitForURL('**/dashboard/capability-map');
-  for (const marker of [
-    'Product API: Connected',
-    'Health check: Passing',
-    'State persistence: Ephemeral',
-  ]) {
-    await page.getByText(marker, { exact: false }).waitFor();
-  }
+  await page.getByRole('heading', { name: 'Capability Map & Readiness', exact: true }).waitFor();
+  await page.locator('[data-testid="amd-evidence-summary"]').waitFor({ state: 'visible' });
+  await page.locator(
+    '[data-testid="capability-runtime-status"][data-api-status="connected"][data-health-status="passing"]',
+  ).waitFor({ state: 'visible' });
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`${origin}/field/outbox`, { waitUntil: 'networkidle' });

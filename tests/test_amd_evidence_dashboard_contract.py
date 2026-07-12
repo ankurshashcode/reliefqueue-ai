@@ -21,6 +21,9 @@ class AmdEvidenceDashboardContractTests(unittest.TestCase):
         self.assertIn("Provider: {liveRuntime?.configured", text)
         self.assertNotIn("AI provider: AMD Developer Cloud<br/>", text)
         self.assertNotIn("Active model: Qwen/Qwen2.5-7B-Instruct<br/>", text)
+        self.assertIn('data-testid="capability-runtime-status"', text)
+        self.assertIn("data-api-status={runtime.api.toLowerCase()}", text)
+        self.assertIn("data-health-status={runtime.health.toLowerCase()}", text)
 
     def test_global_banner_uses_per_request_wording(self) -> None:
         text = (ROOT / "dashboard/src/commandStudio/App.tsx").read_text(encoding="utf-8")

@@ -180,7 +180,12 @@ export function CapabilityMap() {
             <Server className="w-5 h-5 text-emerald-400" /> Current Deployment Status
           </h3>
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-            <div className="p-4 bg-slate-800 rounded text-sm text-slate-300 font-mono leading-relaxed">
+            <div
+              className="p-4 bg-slate-800 rounded text-sm text-slate-300 font-mono leading-relaxed"
+              data-testid="capability-runtime-status"
+              data-api-status={runtime.api.toLowerCase()}
+              data-health-status={runtime.health.toLowerCase()}
+            >
               <strong className="text-white block mb-2 font-sans">Runtime Status:</strong>
               Application: ReliefQueue AI<br/>
               Backend API: {runtime.api}<br/>

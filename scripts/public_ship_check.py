@@ -25,6 +25,9 @@ IMPLEMENTATION_DETAIL_REWRITES = [
 ALLOWLIST = [
     re.compile(r"scripts/public_ship_check\.py"),
     re.compile(r"docs/index\.md"),
+    # Internal engineering/testing runbook retained for reproducibility; it is
+    # not judge-facing product or submission copy.
+    re.compile(r"docs/testing/website-testing\.md"),
 ]
 CODE_ALLOWLIST_PATTERNS = [
     re.compile(r"\.slice\s*\("),
