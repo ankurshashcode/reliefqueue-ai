@@ -114,7 +114,47 @@ async function main() {
     if (!intakeText.includes('family of 5 stranded near north sector bridge')) {
       throw new Error('Step 1 handoff lost the exact report text');
     }
+
+    await page.locator('[data-testid="ai-intake-scroll-cue"]').waitFor({
+      state: 'visible',
+    });
+
+    const analysisRegion = page.locator('[data-testid="ai-intake-analysis-scroll"]');
+    const persistentRail = page.locator('[data-testid="ai-intake-persistent-scrollbar"]');
+    const persistentThumb = page.locator('[data-testid="ai-intake-scroll-thumb"]');
+
+    await persistentRail.waitFor({ state: 'visible' });
+    await persistentThumb.waitFor({ state: 'visible' });
+
+    const railBox = await persistentRail.boundingBox();
+    const thumbBox = await persistentThumb.boundingBox();
+    if (!railBox || railBox.width < 20 || railBox.height < 100) {
+      throw new Error('Persistent Intake analysis scroll rail is not visibly sized');
+    }
+    if (!thumbBox || thumbBox.width < 8 || thumbBox.height < 20) {
+      throw new Error('Persistent Intake analysis scroll thumb is not visibly sized');
+    }
+
+    const beforeScrollTop = await analysisRegion.evaluate((element) => element.scrollTop);
+    await page.getByRole('button', { name: 'Scroll analysis down' }).click();
+    await page.waitForFunction(
+      ({ selector, before }) => {
+        const element = document.querySelector(selector);
+        return element instanceof HTMLElement && element.scrollTop > before;
+      },
+      {
+        selector: '[data-testid="ai-intake-analysis-scroll"]',
+        before: beforeScrollTop,
+      },
+    );
+
+    const afterScrollTop = await analysisRegion.evaluate((element) => element.scrollTop);
+    if (afterScrollTop <= beforeScrollTop) {
+      throw new Error('Persistent Intake scroll control did not move the analysis content');
+    }
+
     checks.push('step1-intake-context');
+    checks.push('step1-scroll-discoverability');
 
     await openWalkthrough(page, appOrigin);
     const step2 = page.locator('[data-testid="walkthrough-step-2"]');

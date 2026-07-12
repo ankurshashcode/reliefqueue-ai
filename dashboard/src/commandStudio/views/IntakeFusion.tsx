@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { readJsonResponse } from '../lib/httpJson';
 import { Bot, Link as LinkIcon, AlertTriangle, ShieldAlert, FileText, Share2, Check, Smartphone, MessageSquare, Zap, XCircle } from 'lucide-react';
@@ -26,6 +26,14 @@ export function IntakeFusion() {
   const [advisoryError, setAdvisoryError] = useState<string | null>(null);
   const [walkthroughMessage, setWalkthroughMessage] = useState<any | null>(null);
   const [walkthroughNotice, setWalkthroughNotice] = useState<string | null>(null);
+  const analysisScrollRef = useRef<HTMLDivElement | null>(null);
+  const [analysisScroll, setAnalysisScroll] = useState({
+    scrollable: false,
+    scrollTop: 0,
+    maxScroll: 0,
+    thumbPercent: 100,
+    thumbTopPercent: 0,
+  });
 
   useEffect(() => {
     const raw = window.sessionStorage.getItem('reliefqueue.walkthrough.intake.v1');
@@ -135,6 +143,67 @@ export function IntakeFusion() {
     && advisoryResult?.analysis_source === 'provider'
     && advisoryResult?.verification_bound_to_nonce === true;
 
+  const updateAnalysisScroll = useCallback(() => {
+    const element = analysisScrollRef.current;
+    if (!element) return;
+
+    const maxScroll = Math.max(0, element.scrollHeight - element.clientHeight);
+    const scrollable = maxScroll > 2;
+    const thumbPercent = scrollable
+      ? Math.max(14, Math.min(100, (element.clientHeight / element.scrollHeight) * 100))
+      : 100;
+    const thumbTravel = Math.max(0, 100 - thumbPercent);
+    const thumbTopPercent = scrollable && maxScroll > 0
+      ? (element.scrollTop / maxScroll) * thumbTravel
+      : 0;
+
+    setAnalysisScroll({
+      scrollable,
+      scrollTop: element.scrollTop,
+      maxScroll,
+      thumbPercent,
+      thumbTopPercent,
+    });
+  }, []);
+
+  useEffect(() => {
+    const element = analysisScrollRef.current;
+    if (!element) return;
+
+    const frame = window.requestAnimationFrame(updateAnalysisScroll);
+    const observer = typeof ResizeObserver !== 'undefined'
+      ? new ResizeObserver(updateAnalysisScroll)
+      : null;
+
+    observer?.observe(element);
+    if (element.firstElementChild instanceof HTMLElement) {
+      observer?.observe(element.firstElementChild);
+    }
+    window.addEventListener('resize', updateAnalysisScroll);
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      observer?.disconnect();
+      window.removeEventListener('resize', updateAnalysisScroll);
+    };
+  }, [normalizedMsg, advisoryResult, loading, updateAnalysisScroll]);
+
+  const scrollAnalysisBy = (delta: number) => {
+    analysisScrollRef.current?.scrollBy({ top: delta, behavior: 'smooth' });
+  };
+
+  const jumpAnalysis = (event: React.MouseEvent<HTMLButtonElement>) => {
+    const element = analysisScrollRef.current;
+    if (!element) return;
+
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const ratio = Math.max(0, Math.min(1, (event.clientY - bounds.top) / bounds.height));
+    element.scrollTo({
+      top: ratio * Math.max(0, element.scrollHeight - element.clientHeight),
+      behavior: 'smooth',
+    });
+  };
+
   return (
     <div className="p-4 md:p-6 lg:p-8 max-w-[1600px] mx-auto h-full flex flex-col overflow-hidden">
       <div className="mb-6 flex-shrink-0">
@@ -176,12 +245,27 @@ export function IntakeFusion() {
         </div>
 
         <div className="w-full md:w-1/2 lg:w-2/3 bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col overflow-hidden">
-          <div className="p-4 border-b border-slate-200 bg-slate-50">
+          <div className="p-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between gap-4">
             <h3 className="font-bold text-slate-900 flex items-center gap-2">
               <FileText className="w-5 h-5 text-rq-primary" /> Extraction, Evidence & Analysis
             </h3>
+            {normalizedMsg && (
+              <span
+                data-testid="ai-intake-scroll-cue"
+                className="shrink-0 rounded-full border border-slate-300 bg-white px-3 py-1 text-[11px] font-bold text-slate-600 shadow-sm"
+              >
+                Scroll to review all evidence ↓
+              </span>
+            )}
           </div>
-          <div className="flex-1 p-6 overflow-y-auto">
+          <div className="relative flex-1 min-h-0">
+            <div
+              id="ai-intake-analysis-scroll-region"
+              ref={analysisScrollRef}
+              onScroll={updateAnalysisScroll}
+              data-testid="ai-intake-analysis-scroll"
+              className="rq-native-scrollbar-hidden h-full overflow-y-scroll overscroll-contain p-6 pr-14"
+            >
             {!normalizedMsg && !loading && (
               <div className="h-full flex flex-col items-center justify-center text-slate-400">
                 <Bot className="w-12 h-12 mb-4 opacity-20" />
@@ -275,6 +359,52 @@ export function IntakeFusion() {
                   <ShieldAlert className="w-4 h-4 shrink-0" />
                   <span><strong>Human Review Required:</strong> Review redaction, evidence, uncertainty and intent before creating a Review Packet. No automatic dispatch.</span>
                 </div>
+              </div>
+            )}
+            </div>
+
+            {analysisScroll.scrollable && (
+              <div
+                data-testid="ai-intake-persistent-scrollbar"
+                className="absolute right-2 top-3 bottom-3 z-10 flex w-8 flex-col items-center gap-1 rounded-full border border-slate-300 bg-slate-100/95 p-1 shadow-md"
+                aria-label="Analysis scroll controls"
+              >
+                <button
+                  type="button"
+                  aria-label="Scroll analysis up"
+                  onClick={() => scrollAnalysisBy(-240)}
+                  disabled={analysisScroll.scrollTop <= 1}
+                  className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white text-[10px] font-black text-slate-700 shadow-sm ring-1 ring-slate-300 hover:bg-slate-50 disabled:cursor-default disabled:opacity-35"
+                >
+                  ▲
+                </button>
+
+                <button
+                  type="button"
+                  data-testid="ai-intake-scroll-track"
+                  aria-label="Jump within analysis"
+                  onClick={jumpAnalysis}
+                  className="relative min-h-16 w-3 flex-1 overflow-hidden rounded-full bg-slate-300 ring-1 ring-slate-400"
+                >
+                  <span
+                    data-testid="ai-intake-scroll-thumb"
+                    className="absolute left-0 right-0 rounded-full bg-slate-700 shadow-sm"
+                    style={{
+                      height: `${analysisScroll.thumbPercent}%`,
+                      top: `${analysisScroll.thumbTopPercent}%`,
+                    }}
+                  />
+                </button>
+
+                <button
+                  type="button"
+                  aria-label="Scroll analysis down"
+                  onClick={() => scrollAnalysisBy(240)}
+                  disabled={analysisScroll.scrollTop >= analysisScroll.maxScroll - 1}
+                  className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white text-[10px] font-black text-slate-700 shadow-sm ring-1 ring-slate-300 hover:bg-slate-50 disabled:cursor-default disabled:opacity-35"
+                >
+                  ▼
+                </button>
               </div>
             )}
           </div>

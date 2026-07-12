@@ -66,5 +66,44 @@ class JudgeWalkthroughHandoffTests(unittest.TestCase):
             "all React hooks must execute before the closed-modal return",
         )
 
+    def test_intake_analysis_scroll_is_visible_and_cued(self):
+        intake = self.read(
+            "dashboard/src/commandStudio/views/IntakeFusion.tsx"
+        )
+        css = self.read("dashboard/src/aiStudioTailwind.css")
+
+        self.assertIn(
+            'data-testid="ai-intake-analysis-scroll"',
+            intake,
+        )
+        self.assertIn(
+            'data-testid="ai-intake-persistent-scrollbar"',
+            intake,
+        )
+        self.assertIn(
+            'data-testid="ai-intake-scroll-track"',
+            intake,
+        )
+        self.assertIn(
+            'data-testid="ai-intake-scroll-thumb"',
+            intake,
+        )
+        self.assertIn('aria-label="Scroll analysis up"', intake)
+        self.assertIn('aria-label="Scroll analysis down"', intake)
+        self.assertIn("updateAnalysisScroll", intake)
+        self.assertIn("thumbTopPercent", intake)
+        self.assertIn("rq-native-scrollbar-hidden", intake)
+        self.assertIn("overflow-y-scroll", intake)
+        self.assertIn(
+            'data-testid="ai-intake-scroll-cue"',
+            intake,
+        )
+        self.assertIn(
+            "Scroll to review all evidence",
+            intake,
+        )
+
+        self.assertIn(".rq-native-scrollbar-hidden", css)
+        self.assertIn("scrollbar-width: none", css)
 if __name__ == "__main__":
     unittest.main()

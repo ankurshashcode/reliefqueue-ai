@@ -199,3 +199,49 @@ a,
     -webkit-print-color-adjust: exact;
   }
 }
+/*
+ * Keep nested evidence panels visibly scrollable.
+ * Firefox uses scrollbar-width/scrollbar-color; Chromium/WebKit use
+ * the pseudo-elements below.
+ */
+.rq-visible-scrollbar {
+  scrollbar-gutter: stable;
+  scrollbar-width: auto;
+  scrollbar-color: #64748b #e2e8f0;
+}
+
+.rq-visible-scrollbar::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+.rq-visible-scrollbar::-webkit-scrollbar-track {
+  background: #e2e8f0;
+  border-left: 1px solid #cbd5e1;
+}
+
+.rq-visible-scrollbar::-webkit-scrollbar-thumb {
+  background: #64748b;
+  border: 2px solid #e2e8f0;
+  border-radius: 9999px;
+}
+
+.rq-visible-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+
+/*
+ * Firefox and some desktop environments may hide native overlay scrollbars
+ * despite overflow-y: scroll. The Intake analysis panel uses its own visible
+ * rail, so suppress the duplicate native control while preserving scrolling.
+ */
+.rq-native-scrollbar-hidden {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.rq-native-scrollbar-hidden::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
