@@ -47,6 +47,13 @@ from .ai import AIConfig, OpenAICompatibleAdapter
 from .assignment import suggest_assignments
 from .cli import ROOT, build_cases
 from .intake import load_json, load_jsonl
+from .judge_rate_limit import (
+    LIVE_AMD_DEFAULT_MAX_BODY_BYTES,
+    LIVE_AMD_MAX_CASES,
+    LIVE_AMD_ROUTES,
+    consume_live_amd_budget,
+    positive_env_int,
+)
 from .live_integrations import _postgres_execute, _postgres_query, _redis_command, _redis_xgroup_create, _sql_literal
 
 DEFAULT_DSN = "postgresql://reliefqueue:reliefqueue@127.0.0.1:54329/reliefqueue"
@@ -920,6 +927,19 @@ SPA_ROUTE_PREFIXES = (
 )
 
 
+
+def _require_live_amd_synthetic_confirmation(route: str, body: dict[str, Any]) -> None:
+    """Protect public live-provider routes without constraining internal Python callers."""
+
+    normalized = route.rstrip("/")
+    if normalized == "/api/ai/live-verification":
+        user_text = str(body.get("text") or "").strip()
+        if user_text and body.get("synthetic_confirmed") is not True:
+            raise ProductApiError(400, "Confirm synthetic demonstration data before live provider processing")
+        return
+    if normalized == "/api/ai/burst-verification" and body.get("synthetic_confirmed") is not True:
+        raise ProductApiError(400, "Confirm every report is synthetic demonstration data before live provider processing")
+
 def serve(host: str, port: int, root: Path = ROOT) -> int:
     cors_origins = {
         origin.strip()
@@ -976,13 +996,35 @@ def serve(host: str, port: int, root: Path = ROOT) -> int:
 
         def _handle(self, method: str) -> None:
             try:
-                payload = _route(method, self.path, self._read_json())
+                body = self._read_json()
+                route = urlparse(self.path).path.rstrip("/")
+                if method == "POST" and route in LIVE_AMD_ROUTES:
+                    _require_live_amd_synthetic_confirmation(route, body)
+                    forwarded = self.headers.get("X-Forwarded-For", "").split(",", 1)[0].strip()
+                    client_key = forwarded or str(self.client_address[0])
+                    budget = consume_live_amd_budget(client_key, route, body)
+                    if not budget["allowed"]:
+                        self._json(
+                            429,
+                            {
+                                "error": "Live AMD judge-demo request budget reached. Retry later.",
+                                "rate_limit_scope": budget.get("scope"),
+                                "estimated_provider_call_cost": budget["cost"],
+                                "retry_after_seconds": budget["retry_after_seconds"],
+                                "human_review_required": True,
+                            },
+                            headers={"Retry-After": str(budget["retry_after_seconds"])},
+                        )
+                        return
+                payload = _route(method, self.path, body)
                 if isinstance(payload, bytes):
                     self._bytes(200, payload)
                 else:
                     self._json(200, payload)
             except ProductApiError as exc:
                 self._json(exc.status, {"error": str(exc)})
+            except json.JSONDecodeError:
+                self._json(400, {"error": "Request body must be valid JSON"})
             except Exception as exc:
                 self._json(500, {"error": str(exc)})
 
@@ -990,13 +1032,21 @@ def serve(host: str, port: int, root: Path = ROOT) -> int:
             length = int(self.headers.get("Content-Length") or "0")
             if length <= 0:
                 return {}
-            return json.loads(self.rfile.read(length).decode("utf-8"))
+            max_bytes = positive_env_int("RELIEFQUEUE_MAX_JSON_BODY_BYTES", LIVE_AMD_DEFAULT_MAX_BODY_BYTES)
+            if max_bytes and length > max_bytes:
+                raise ProductApiError(413, f"Request body exceeds {max_bytes} bytes")
+            payload = json.loads(self.rfile.read(length).decode("utf-8"))
+            if not isinstance(payload, dict):
+                raise ProductApiError(400, "Request body must be a JSON object")
+            return payload
 
-        def _json(self, status: int, payload: dict[str, Any]) -> None:
+        def _json(self, status: int, payload: dict[str, Any], *, headers: dict[str, str] | None = None) -> None:
             raw = json.dumps(payload).encode("utf-8")
             self.send_response(status)
             self.send_header("Content-Type", "application/json; charset=utf-8")
             self._cors_headers()
+            for name, value in (headers or {}).items():
+                self.send_header(name, value)
             self.send_header("Content-Length", str(len(raw)))
             self.end_headers()
             self.wfile.write(raw)
@@ -1159,7 +1209,7 @@ def _route(method: str, path: str, body: dict[str, Any]) -> dict[str, Any]:
     raise ProductApiError(404, f"unknown product API route: {route}")
 
 
-BURST_MAX_CASES = 24
+BURST_MAX_CASES = LIVE_AMD_MAX_CASES
 BURST_VALID_CONCURRENCY = {1, 2, 4, 6, 8}
 
 
@@ -1173,6 +1223,9 @@ def live_verification(body: dict[str, Any] | None = None) -> dict[str, Any]:
     """
 
     import datetime as _dt
+
+    body = body or {}
+    user_text = str(body.get("text") or "").strip()
 
     config = AIConfig.from_env()
     verified_at = _dt.datetime.now(_dt.UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -1204,10 +1257,9 @@ def live_verification(body: dict[str, Any] | None = None) -> dict[str, Any]:
         }
 
     adapter = OpenAICompatibleAdapter(config)
-    workload_mode = str((body or {}).get("workload_mode") or (body or {}).get("mode") or "single")
+    workload_mode = str(body.get("workload_mode") or body.get("mode") or "single")
     if workload_mode in {"complex", "dossier"}:
         workload_mode = "complex_dossier"
-    user_text = str((body or {}).get("text") or "").strip()
 
     if user_text and workload_mode in {"single", "complex_dossier"}:
         try:

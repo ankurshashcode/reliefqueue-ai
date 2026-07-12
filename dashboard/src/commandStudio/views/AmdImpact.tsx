@@ -470,7 +470,7 @@ export function AmdImpact() {
             <h3 className="font-bold text-slate-900 mb-1 flex items-center gap-2">
               <FileText className="w-5 h-5 text-rq-primary" /> Single Incident — Judge Input
             </h3>
-            <p className="text-sm text-slate-500 mb-4">Edit the synthetic report below, confirm it contains no real personal information, and submit it directly to the AMD MI300X endpoint.</p>
+            <p className="text-sm text-slate-500 mb-4">Edit the synthetic report below, confirm it contains no real personal information, and attempt a nonce-bound request through the configured live inference endpoint. A result is labelled AMD live only after provider verification.</p>
             <textarea
               value={singleInput}
               onChange={e => setSingleInput(e.target.value)}
@@ -501,8 +501,8 @@ export function AmdImpact() {
               className="mt-4 flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold px-6 py-3 rounded-xl text-sm transition-colors shadow"
             >
               {singleLoading
-                ? <><RefreshCw className="w-4 h-4 animate-spin" /> Contacting AMD MI300X…</>
-                : <><Zap className="w-4 h-4" /> Run My Input on AMD MI300X</>}
+                ? <><RefreshCw className="w-4 h-4 animate-spin" /> Attempting live AMD verification…</>
+                : <><Zap className="w-4 h-4" /> Attempt Live AMD Analysis</>}
             </button>
           </div>
 
@@ -519,7 +519,7 @@ export function AmdImpact() {
             </h3>
             <p className="text-sm text-slate-500 mb-4">
               Paste a large mixture of reports, updates, OCR text, multilingual content, and conflicting information.
-              The AMD MI300X endpoint will process the full dossier and return a structured advisory.
+              The configured live endpoint will be asked to process the dossier. The result is labelled AMD live only when provider transport, nonce binding, and structured-output checks pass.
             </p>
             <div className="flex gap-3 mb-3">
               <button
@@ -576,8 +576,8 @@ export function AmdImpact() {
               className="mt-4 flex items-center gap-2 bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white font-bold px-6 py-3 rounded-xl text-sm transition-colors shadow"
             >
               {dossierLoading
-                ? <><RefreshCw className="w-4 h-4 animate-spin" /> Processing dossier on AMD MI300X…</>
-                : <><Zap className="w-4 h-4" /> Run Complex Dossier on AMD MI300X</>}
+                ? <><RefreshCw className="w-4 h-4 animate-spin" /> Attempting live dossier verification…</>
+                : <><Zap className="w-4 h-4" /> Attempt Live Dossier Analysis</>}
             </button>
           </div>
 
@@ -682,8 +682,8 @@ export function AmdImpact() {
                 className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-bold px-6 py-3 rounded-xl text-sm transition-colors shadow"
               >
                 {burstLoading
-                  ? <><RefreshCw className="w-4 h-4 animate-spin" /> Running burst on AMD MI300X…</>
-                  : <><Zap className="w-4 h-4" /> Run Burst on AMD MI300X</>}
+                  ? <><RefreshCw className="w-4 h-4 animate-spin" /> Attempting live AMD burst…</>
+                  : <><Zap className="w-4 h-4" /> Attempt Live AMD Burst</>}
               </button>
             </div>
           </div>
@@ -938,6 +938,36 @@ function LiveResultPanel({ result, label, showOriginalInput }: {
         <ECard icon={<CheckCircle className="w-3.5 h-3.5" />} label="Fallback Used" value={result.fallback_used ? 'Yes' : 'No'} highlight={result.fallback_used ? 'red' : 'green'} />
         <ECard icon={<ShieldAlert className="w-3.5 h-3.5" />} label="Human Review" value="Required" highlight="amber" />
       </div>
+
+      {result.deterministic_prompt_support && (
+        <div className="rounded-xl border border-indigo-200 bg-indigo-50/40 p-4" data-testid="amd-impact-comparison">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <h4 className="font-bold text-indigo-950 text-xs uppercase tracking-wider">Same-input capability comparison</h4>
+            <span className="rounded bg-white px-2 py-1 text-[10px] font-bold text-indigo-700 border border-indigo-200">Not a hardware-exclusivity benchmark</span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+            <div className="rounded-lg border border-slate-200 bg-white p-3">
+              <div className="font-black text-slate-800 mb-2">Deterministic support · 0 provider calls</div>
+              <div className="space-y-1 text-slate-600">
+                <div>Source ledger: <strong>{result.deterministic_prompt_support.source_report_count ?? '—'} reports</strong></div>
+                <div>Arithmetic anchors: <strong>{result.deterministic_prompt_support.calculation_candidate_count ?? 0}</strong></div>
+                <div>Conflict/update signals: <strong>{result.deterministic_prompt_support.conflict_update_signal_count ?? 0}</strong></div>
+                <div className="pt-1 text-slate-500">Prepares and checks evidence, but does not claim provider-authored cross-report prioritization or synthesis.</div>
+              </div>
+            </div>
+            <div className={`rounded-lg border p-3 ${ok ? 'border-emerald-300 bg-emerald-50' : 'border-amber-300 bg-amber-50'}`}>
+              <div className={`font-black mb-2 ${ok ? 'text-emerald-900' : 'text-amber-900'}`}>AMD/vLLM analysis · {ok ? 'verified live' : 'not verified live'}</div>
+              <div className={ok ? 'space-y-1 text-emerald-800' : 'space-y-1 text-amber-800'}>
+                <div>Provider calls: <strong>{result.provider_call_count ?? '—'}</strong></div>
+                <div>Provider tokens: <strong>{result.provider_total_tokens ?? result.total_tokens ?? '—'}</strong></div>
+                <div>Latency: <strong>{result.provider_latency_ms ?? result.latency_ms ?? '—'} ms</strong></div>
+                <div>Structured sections: <strong>{result.structured_output ? Object.keys(result.structured_output).length : 0}</strong></div>
+                <div className="pt-1">Adds nonce-bound structured synthesis, ranked operational actions, conflict reconciliation, and coordinator questions when verification passes.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {showOriginalInput && (result.original_input || result.sanitized_input) && (

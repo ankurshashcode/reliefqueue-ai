@@ -3,7 +3,7 @@ COMMAND=npm --prefix dashboard run local-coordinator-click-smoke
 > reliefqueue-dashboard@0.2.0 local-coordinator-click-smoke
 > node scripts/productClickSmoke.mjs local
 
-product click smoke ports: api=46851 app=43317
+product click smoke ports: api=44163 app=43507
 ACTION_START action_id=local.view_scenario_profile route=/local-coordinator?source=latest
 ACTION_START action_id=local.update_scenario_profile route=/local-coordinator?source=latest
 ACTION_START action_id=local.update_operation_zone route=/local-coordinator?source=latest

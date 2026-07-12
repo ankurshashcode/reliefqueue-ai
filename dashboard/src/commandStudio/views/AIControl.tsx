@@ -66,24 +66,24 @@ export function AIControl() {
   const renderSettings = () => (
     <div className="max-w-4xl mx-auto space-y-6">
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
-        <h2 className="text-xl font-bold text-slate-900 mb-6">Active Model Configuration</h2>
+        <h2 className="text-xl font-bold text-slate-900 mb-6">AMD Model Configuration and Live Test</h2>
 
-        {/* Active model — read-only, reflects actual environment */}
+        {/* Campaign configuration is historical until the live connection test verifies the current request. */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
           <div>
             <label className="block text-sm font-bold text-slate-700 mb-2">Advisory Provider</label>
             <div className="w-full bg-slate-50 border border-slate-200 text-slate-900 text-sm rounded-lg p-2.5 flex items-center gap-2">
               <Cpu className="w-4 h-4 text-rq-primary shrink-0" />
-              AMD Developer Cloud
+              AMD Developer Cloud (when configured)
             </div>
             <p className="text-xs text-slate-400 mt-1">Configured via OPENAI_COMPAT_* environment variables.</p>
           </div>
           <div>
             <label className="block text-sm font-bold text-slate-700 mb-2">Model Version</label>
             <div className="w-full bg-slate-50 border border-slate-200 text-slate-900 text-sm rounded-lg p-2.5 font-medium">
-              Qwen2.5-7B-Instruct via AMD vLLM
+              Qwen2.5-7B-Instruct via AMD vLLM — verified campaign configuration
             </div>
-            <p className="text-xs text-slate-400 mt-1">Served as <code className="bg-slate-100 px-1 rounded">reliefqueue-amd</code> · vLLM 0.23.0 · AMD Instinct MI300X</p>
+            <p className="text-xs text-slate-400 mt-1">Historically verified as <code className="bg-slate-100 px-1 rounded">reliefqueue-amd</code> on vLLM 0.23.0 and AMD Instinct MI300X. Use Test Connection for current-request truth.</p>
           </div>
         </div>
 
@@ -146,12 +146,11 @@ export function AIControl() {
               <Bot className="w-4 h-4 text-purple-500" /> Gemma 4 Bonus Lane
             </h3>
             <span className="bg-slate-100 text-slate-500 text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider border border-slate-200">
-              Experimental — not active in this deployment
+              Experimental — not part of verified campaign
             </span>
           </div>
           <p className="text-xs text-slate-600">
-            Gemma 4 is prepared as a bonus reasoning lane via the same vLLM/OpenAI-compatible backend, but is <strong>not the active model</strong> in this deployment.
-            The current active model is <strong>Qwen/Qwen2.5-7B-Instruct</strong>. Human review remains required for all advisory output.
+            Gemma 4 is a future bonus lane, not part of the verified AMD campaign or current live-request proof. The frozen campaign used <strong>Qwen/Qwen2.5-7B-Instruct</strong>; current provider metadata is trusted only after Test Connection succeeds. Human review remains required for every advisory.
           </p>
         </div>
       </div>
@@ -178,7 +177,7 @@ export function AIControl() {
             <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
               <Cpu className="w-5 h-5 text-rq-primary" /> Safety Validation — Qwen2.5-7B-Instruct via AMD vLLM
             </h2>
-            <p className="text-slate-500 text-sm mt-1">Deterministic safety checks on the active advisory model.</p>
+            <p className="text-slate-500 text-sm mt-1">Safety-contract review for the verified campaign configuration; live provider status is established separately per request.</p>
           </div>
         </div>
 
@@ -257,8 +256,8 @@ export function AIControl() {
               It does <span className="underline font-bold">not</span> dispatch teams, confirm safety, close cases, or override coordinator approval. Human review remains strictly required for all assignments.
             </p>
             <div className="bg-white border border-amber-200 p-4 rounded-lg mt-4 text-sm font-mono text-slate-700 shadow-sm">
-              Active Model: <span className="font-bold text-slate-900">Qwen2.5-7B-Instruct via AMD vLLM</span><br />
-              Provider: <span className="font-bold text-slate-900">AMD Developer Cloud</span><br />
+              Verified Campaign Model: <span className="font-bold text-slate-900">Qwen2.5-7B-Instruct via AMD vLLM</span><br />
+              Historical Provider: <span className="font-bold text-slate-900">AMD Developer Cloud</span><br />
               Rollback Available: <span className="text-emerald-600 font-bold">Yes (deterministic fallback always active)</span>
             </div>
           </div>

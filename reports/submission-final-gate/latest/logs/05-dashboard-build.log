@@ -1,4 +1,5 @@
 COMMAND=make dashboard-build
+make[1]: Entering directory '/home/ankur-sawhney/githubRepos/ankurshashcode/reliefqueue-ai'
 PYTHONPATH=src python3 -m reliefqueue.cli run-demo-local
 Demo generated reports in /home/ankur-sawhney/githubRepos/ankurshashcode/reliefqueue-ai/reports/latest
 Validation PASS
@@ -19,44 +20,45 @@ transforming...
 rendering chunks...
 computing gzip size...
 dist/index.html                                0.72 kB │ gzip:  0.41 kB
-dist/assets/index-CqedppRw.css                71.16 kB │ gzip: 12.93 kB
+dist/assets/index-DGo_S571.css                71.70 kB │ gzip: 13.04 kB
 dist/assets/actionLog-CK2FeRLu.js              0.28 kB │ gzip:  0.24 kB
-dist/assets/check-MGsKAJCX.js                  0.31 kB │ gzip:  0.25 kB
-dist/assets/clock-DcZckuk0.js                  0.35 kB │ gzip:  0.28 kB
+dist/assets/check-DwMP6E8p.js                  0.31 kB │ gzip:  0.25 kB
+dist/assets/clock-RrJYwIpb.js                  0.35 kB │ gzip:  0.28 kB
 dist/assets/productActions-BsGJO2mC.js         0.38 kB │ gzip:  0.30 kB
-dist/assets/smartphone-CEl5CmJb.js             0.38 kB │ gzip:  0.30 kB
-dist/assets/circle-x-uUHZepdk.js               0.39 kB │ gzip:  0.29 kB
-dist/assets/message-square-DK4S6OJc.js         0.42 kB │ gzip:  0.32 kB
-dist/assets/activity-Dw9cHlDy.js               0.42 kB │ gzip:  0.32 kB
-dist/assets/funnel-g_EEMvq8.js                 0.44 kB │ gzip:  0.33 kB
-dist/assets/map-pin-BMB5eenq.js                0.44 kB │ gzip:  0.34 kB
-dist/assets/hash-DUmvwwjM.js                   0.48 kB │ gzip:  0.31 kB
-dist/assets/list-C7RoT7k2.js                   0.49 kB │ gzip:  0.31 kB
-dist/assets/printer-BpdvNm8Z.js                0.51 kB │ gzip:  0.35 kB
-dist/assets/save-BbPq9rUX.js                   0.51 kB │ gzip:  0.34 kB
-dist/assets/file-text-DlGJhfMq.js              0.52 kB │ gzip:  0.33 kB
-dist/assets/camera-CI3CBGid.js                 0.52 kB │ gzip:  0.37 kB
-dist/assets/crosshair-CRngnFDK.js              0.54 kB │ gzip:  0.33 kB
-dist/assets/shield-check-DYUs3j68.js           0.88 kB │ gzip:  0.46 kB
-dist/assets/triangle-alert-BVgEgP0A.js         1.71 kB │ gzip:  0.62 kB
-dist/assets/ProductRoleSwitcher-NZ8mk5dY.js    4.43 kB │ gzip:  1.74 kB
-dist/assets/IncidentLinks-hpAjMVQK.js          5.72 kB │ gzip:  2.01 kB
-dist/assets/Scenario-DRos9d5u.js               6.68 kB │ gzip:  2.44 kB
-dist/assets/AIAdvisoryDrawer-Bk8aIOsr.js       7.12 kB │ gzip:  2.13 kB
-dist/assets/App-YXJspaFH.js                    9.12 kB │ gzip:  3.23 kB
-dist/assets/Workload-C3sieBZj.js              10.98 kB │ gzip:  3.21 kB
-dist/assets/Quality-DTECs4An.js               12.16 kB │ gzip:  3.80 kB
-dist/assets/LiveMap-BdFA_GIY.js               12.44 kB │ gzip:  3.97 kB
-dist/assets/amdEvidence-BHDrtoYg.js           12.55 kB │ gzip:  3.42 kB
-dist/assets/CapabilityMap-Bh2WJOZb.js         13.22 kB │ gzip:  4.02 kB
-dist/assets/AIControl-B0x3d6H2.js             13.93 kB │ gzip:  4.05 kB
-dist/assets/Assignments-CCFc0cgM.js           14.39 kB │ gzip:  4.23 kB
-dist/assets/IntakeFusion-B6-N91cy.js          14.57 kB │ gzip:  4.73 kB
-dist/assets/Audit-BLUU8YNg.js                 15.61 kB │ gzip:  3.82 kB
-dist/assets/FieldSync-BfbuiW8T.js             16.70 kB │ gzip:  4.52 kB
-dist/assets/App-phqWewr9.js                   23.25 kB │ gzip:  6.70 kB
-dist/assets/Overview-Bg55ARin.js              35.70 kB │ gzip:  9.16 kB
-dist/assets/AmdImpact-D17wqY74.js             46.81 kB │ gzip: 12.18 kB
-dist/assets/App-DrFoAAoq.js                   64.41 kB │ gzip: 14.43 kB
-dist/assets/index-DfYvM4lv.js                201.71 kB │ gzip: 63.61 kB
-✓ built in 6.16s
+dist/assets/smartphone-DZv0YIFV.js             0.38 kB │ gzip:  0.30 kB
+dist/assets/circle-x-DD5qe7Wu.js               0.39 kB │ gzip:  0.29 kB
+dist/assets/message-square-CkhIV3b_.js         0.42 kB │ gzip:  0.32 kB
+dist/assets/activity-BQX9_jEI.js               0.42 kB │ gzip:  0.32 kB
+dist/assets/funnel-421Qw8mq.js                 0.44 kB │ gzip:  0.32 kB
+dist/assets/map-pin-aVAvgmTr.js                0.44 kB │ gzip:  0.34 kB
+dist/assets/hash-JuyV6UMS.js                   0.48 kB │ gzip:  0.31 kB
+dist/assets/list-BcaZmpdl.js                   0.49 kB │ gzip:  0.31 kB
+dist/assets/printer-CpZ1T62M.js                0.51 kB │ gzip:  0.35 kB
+dist/assets/save-D3rlFWaj.js                   0.51 kB │ gzip:  0.34 kB
+dist/assets/file-text-BlsE3TJJ.js              0.52 kB │ gzip:  0.33 kB
+dist/assets/camera-D0u_KGUp.js                 0.52 kB │ gzip:  0.37 kB
+dist/assets/crosshair-DAkD4Zwg.js              0.54 kB │ gzip:  0.33 kB
+dist/assets/shield-check-DI0gu5_-.js           0.88 kB │ gzip:  0.46 kB
+dist/assets/triangle-alert-DeiuDoEO.js         1.71 kB │ gzip:  0.62 kB
+dist/assets/ProductRoleSwitcher-xysG0ps0.js    4.43 kB │ gzip:  1.73 kB
+dist/assets/IncidentLinks-MLqjtI_x.js          5.72 kB │ gzip:  2.01 kB
+dist/assets/Scenario-DSedfe9q.js               6.68 kB │ gzip:  2.44 kB
+dist/assets/AIAdvisoryDrawer-CtgaYVfH.js       7.12 kB │ gzip:  2.13 kB
+dist/assets/App-D4JDFIto.js                    9.12 kB │ gzip:  3.23 kB
+dist/assets/Workload-Cvp33lzw.js              10.98 kB │ gzip:  3.21 kB
+dist/assets/Quality-DXcPS1FO.js               12.16 kB │ gzip:  3.80 kB
+dist/assets/LiveMap-CBw46wDN.js               12.44 kB │ gzip:  3.96 kB
+dist/assets/amdEvidence-Bx-XxzI5.js           12.55 kB │ gzip:  3.42 kB
+dist/assets/CapabilityMap-CoNsQScf.js         13.22 kB │ gzip:  4.02 kB
+dist/assets/AIControl-DUmn9kd7.js             14.14 kB │ gzip:  4.15 kB
+dist/assets/Assignments-qnaWX1GA.js           14.39 kB │ gzip:  4.23 kB
+dist/assets/IntakeFusion-Cnedioaa.js          14.57 kB │ gzip:  4.72 kB
+dist/assets/Audit-CE5sz7iz.js                 15.61 kB │ gzip:  3.81 kB
+dist/assets/FieldSync-Dq7C_khX.js             16.70 kB │ gzip:  4.52 kB
+dist/assets/App-DGi23VSO.js                   23.25 kB │ gzip:  6.70 kB
+dist/assets/Overview-DCtchMI8.js              36.27 kB │ gzip:  9.31 kB
+dist/assets/AmdImpact-ufPu_JLO.js             49.56 kB │ gzip: 12.76 kB
+dist/assets/App-QXs-9f0o.js                   64.41 kB │ gzip: 14.42 kB
+dist/assets/index-piv3F-F7.js                201.71 kB │ gzip: 63.61 kB
+✓ built in 6.71s
+make[1]: Leaving directory '/home/ankur-sawhney/githubRepos/ankurshashcode/reliefqueue-ai'

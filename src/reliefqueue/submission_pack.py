@@ -73,6 +73,54 @@ def normalize_public_url(value: str | None) -> str | None:
     return text
 
 
+def _load_live_amd_public_proof(root: Path, public_url: str | None) -> tuple[dict[str, Any], dict[str, Any] | None]:
+    path = root / "reports" / "submission-live-amd" / "latest" / "report.json"
+    pending = {
+        "status": "not_run",
+        "report_path": str(path.relative_to(root)),
+        "provider_calls_were_made_by_pack_generator": False,
+    }
+    if not path.exists():
+        return pending, None
+    try:
+        report = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {**pending, "status": "invalid_or_failed"}, None
+    valid = (
+        isinstance(report, dict)
+        and report.get("contract") == "reliefqueue-submission-live-amd-check/v1"
+        and report.get("status") == "PASS"
+        and report.get("synthetic_only") is True
+        and report.get("human_review_required") is True
+    )
+    if not valid:
+        return {**pending, "status": "invalid_or_failed"}, None
+    proof_url = normalize_public_url(str(report.get("public_url") or ""))
+    status = "verified"
+    if public_url and proof_url != public_url:
+        status = "verified_different_url"
+    dossier = report.get("dossier") or {}
+    burst = report.get("burst") or {}
+    summary = {
+        "status": status,
+        "report_path": str(path.relative_to(root)),
+        "public_url": proof_url,
+        "generated_at_utc": report.get("generated_at_utc"),
+        "synthetic_only": True,
+        "human_review_required": True,
+        "dossier_verified_live": dossier.get("verified_live") is True,
+        "dossier_latency_ms": dossier.get("latency_ms"),
+        "dossier_provider_call_count": dossier.get("provider_call_count"),
+        "burst_verified_live": burst.get("verified_live") is True,
+        "burst_succeeded": burst.get("succeeded"),
+        "burst_submitted": burst.get("submitted"),
+        "burst_provider_call_count": burst.get("provider_call_count"),
+        "claim_boundary": report.get("claim_boundary"),
+        "provider_calls_were_made_by_pack_generator": False,
+    }
+    return summary, report
+
+
 def build_submission_facts(
     repo_root: Path | None = None,
     public_url: str | None = None,
@@ -83,6 +131,7 @@ def build_submission_facts(
     deployment = campaign["deployment"]
     normalized_public_url = normalize_public_url(public_url or os.environ.get("RELIEFQUEUE_PUBLIC_URL"))
     repository_url = _public_repository_url(root) or "https://github.com/ankurshashcode/reliefqueue-ai"
+    live_amd_public_proof, _ = _load_live_amd_public_proof(root, normalized_public_url)
 
     facts: dict[str, Any] = {
         "contract": "reliefqueue-submission-pack/v1",
@@ -97,6 +146,7 @@ def build_submission_facts(
             "public_application_url": normalized_public_url,
             "public_application_status": "provided_unverified" if normalized_public_url else "pending",
         },
+        "live_amd_public_proof": live_amd_public_proof,
         "amd_evidence": {
             "campaign_id": campaign["campaign_id"],
             "campaign_type": campaign["campaign_type"],
@@ -161,6 +211,7 @@ def validate_submission_facts(facts: dict[str, Any]) -> None:
     amd = facts.get("amd_evidence") or {}
     truth = facts.get("truthfulness") or {}
     assets = facts.get("submission_assets") or {}
+    live_proof = facts.get("live_amd_public_proof") or {}
 
     def require(condition: bool, message: str) -> None:
         if not condition:
@@ -178,6 +229,15 @@ def validate_submission_facts(facts: dict[str, Any]) -> None:
     require(truth.get("application_fallback_exercised_by_campaign") is False, "submission must disclose application fallback was not exercised")
     require(assets.get("title_and_descriptions") == "generated", "copy-ready descriptions must be generated")
     require(len(facts.get("demo_routes") or []) >= 6, "demo route checklist is incomplete")
+    require(
+        live_proof.get("status") in {"not_run", "verified", "verified_different_url", "invalid_or_failed"},
+        "unexpected live AMD public proof status",
+    )
+    if live_proof.get("status") == "verified":
+        require(live_proof.get("synthetic_only") is True, "live proof must use synthetic inputs")
+        require(live_proof.get("human_review_required") is True, "live proof must retain human review")
+        require(live_proof.get("dossier_verified_live") is True, "live dossier proof must be verified")
+        require(live_proof.get("burst_verified_live") is True, "live burst proof must be verified")
     rendered = json.dumps(facts).lower()
     for forbidden in ("api_key", "authorization", "bearer ", "password", "private_key"):
         require(forbidden not in rendered, f"submission facts contain forbidden credential marker: {forbidden}")
@@ -234,6 +294,26 @@ ReliefQueue also demonstrates deterministic degraded operation, local queue reco
 """
 
 
+def _live_amd_proof_markdown(facts: dict[str, Any]) -> str:
+    proof = facts.get("live_amd_public_proof") or {}
+    status = proof.get("status")
+    if status == "verified":
+        return (
+            f"- Status: verified on the submitted public URL\n"
+            f"- Synthetic dossier: verified live; latency {proof.get('dossier_latency_ms')} ms; "
+            f"provider calls {proof.get('dossier_provider_call_count')}\n"
+            f"- Synthetic burst: {proof.get('burst_succeeded')}/{proof.get('burst_submitted')} verified live; "
+            f"provider calls {proof.get('burst_provider_call_count')}\n"
+            f"- Human review required: yes\n"
+            f"- Claim boundary: {proof.get('claim_boundary')}"
+        )
+    if status == "verified_different_url":
+        return "A live AMD proof exists, but it was produced for a different public URL and is not claimed for this submission URL."
+    if status == "invalid_or_failed":
+        return "No passing deployed live AMD proof is included. Use only the frozen historical campaign until the public live check passes."
+    return "Not run yet. After deployment, run the explicit submission-live-amd-check; submission-pack itself makes zero provider calls."
+
+
 def _amd_evidence_markdown(facts: dict[str, Any]) -> str:
     amd = facts["amd_evidence"]
     limitations = "\n".join(f"- {item}" for item in facts["limitations"])
@@ -265,10 +345,21 @@ Use: “ReliefQueue's staged AMD/vLLM evidence campaign resolved all 24 evaluati
 
 Do not claim that one uniform production prompt achieved 100% accuracy.
 
+## Current deployed public proof
+
+{_live_amd_proof_markdown(facts)}
+
 ## Limitations
 
 {limitations}
 """
+
+
+def _live_demo_instruction(facts: dict[str, Any]) -> str:
+    proof = facts.get("live_amd_public_proof") or {}
+    if proof.get("status") == "verified":
+        return "The submitted URL has a passing synthetic public live proof, so run one bounded judge input and show nonce, provider source, tokens, latency, no fallback, and human-review status."
+    return "Do not claim current live AMD availability unless the deployed endpoint is intentionally configured and the separate public live check passes."
 
 
 def _demo_script(facts: dict[str, Any]) -> str:
@@ -291,7 +382,7 @@ Open `/dashboard/amd-impact`. Show the verified historical 24/24 AMD/vLLM campai
 
 ## 1:25–1:50 — Capability Map
 
-Open `/dashboard/capability-map`. Point out the separation between historical evidence, current runtime configuration, and per-request live verification. Do not click the live verification button unless the deployed endpoint is intentionally configured.
+Open `/dashboard/capability-map`. Point out the separation between historical evidence, current runtime configuration, and per-request live verification. {_live_demo_instruction(facts)}
 
 ## 1:50–2:20 — Field workflow
 
@@ -368,6 +459,7 @@ def generate_submission_pack(
 
     facts = build_submission_facts(root, public_url=public_url)
     campaign = load_amd_evidence_campaign(root / "fixtures" / "amd_evidence_campaign_v1.json")
+    _, live_amd_report = _load_live_amd_public_proof(root, facts["project"]["public_application_url"])
 
     files: dict[str, str] = {
         "01_submission_copy.md": _submission_copy(facts),
@@ -391,6 +483,10 @@ def generate_submission_pack(
         "06_public_route_checklist.md",
         "07_amd_evidence_campaign_v1.json",
     ]
+    if live_amd_report is not None and facts["live_amd_public_proof"]["status"] == "verified":
+        live_name = "08_live_amd_public_proof.json"
+        (out / live_name).write_text(json.dumps(live_amd_report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        artifact_names.append(live_name)
     manifest = {
         "contract": "reliefqueue-submission-pack-manifest/v1",
         "generated_at_utc": facts["generated_at_utc"],

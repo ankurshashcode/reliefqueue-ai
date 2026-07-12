@@ -2,7 +2,7 @@
   "contract": "reliefqueue-submission-final-gate/v1",
   "failures": [],
   "fast_mode": false,
-  "generated_at_utc": "2026-07-12T09:42:17Z",
+  "generated_at_utc": "2026-07-12T10:41:14Z",
   "provider_calls": 0,
   "provider_credentials_removed": [
     "AI_API_KEY",
@@ -24,7 +24,7 @@
         "python3",
         "scripts/amd_evidence_report.py"
       ],
-      "duration_seconds": 0.083,
+      "duration_seconds": 0.082,
       "exit_code": 0,
       "log": "reports/submission-final-gate/latest/logs/01-amd-evidence-validate.log",
       "name": "amd-evidence-validate",
@@ -39,7 +39,7 @@
         "-s",
         "tests"
       ],
-      "duration_seconds": 26.026,
+      "duration_seconds": 37.172,
       "exit_code": 0,
       "log": "reports/submission-final-gate/latest/logs/02-repository-tests.log",
       "name": "repository-tests",
@@ -52,7 +52,7 @@
         "reliefqueue.cli",
         "no-secrets"
       ],
-      "duration_seconds": 11.139,
+      "duration_seconds": 16.781,
       "exit_code": 0,
       "log": "reports/submission-final-gate/latest/logs/03-no-secrets.log",
       "name": "no-secrets",
@@ -63,7 +63,7 @@
         "python3",
         "scripts/public_ship_check.py"
       ],
-      "duration_seconds": 0.248,
+      "duration_seconds": 0.252,
       "exit_code": 0,
       "log": "reports/submission-final-gate/latest/logs/04-public-ship-check.log",
       "name": "public-ship-check",
@@ -74,7 +74,7 @@
         "make",
         "dashboard-build"
       ],
-      "duration_seconds": 8.048,
+      "duration_seconds": 8.681,
       "exit_code": 0,
       "log": "reports/submission-final-gate/latest/logs/05-dashboard-build.log",
       "name": "dashboard-build",
@@ -88,7 +88,7 @@
         "run",
         "amd-evidence-ui-check"
       ],
-      "duration_seconds": 5.978,
+      "duration_seconds": 6.318,
       "exit_code": 0,
       "log": "reports/submission-final-gate/latest/logs/06-amd-evidence-ui-check.log",
       "name": "amd-evidence-ui-check",
@@ -102,7 +102,7 @@
         "run",
         "command-center-click-smoke"
       ],
-      "duration_seconds": 23.859,
+      "duration_seconds": 24.668,
       "exit_code": 0,
       "log": "reports/submission-final-gate/latest/logs/07-command-center-click-smoke.log",
       "name": "command-center-click-smoke",
@@ -116,7 +116,7 @@
         "run",
         "field-app-click-smoke"
       ],
-      "duration_seconds": 20.131,
+      "duration_seconds": 19.854,
       "exit_code": 0,
       "log": "reports/submission-final-gate/latest/logs/08-field-app-click-smoke.log",
       "name": "field-app-click-smoke",
@@ -130,7 +130,7 @@
         "run",
         "local-coordinator-click-smoke"
       ],
-      "duration_seconds": 19.912,
+      "duration_seconds": 20.153,
       "exit_code": 0,
       "log": "reports/submission-final-gate/latest/logs/09-local-coordinator-click-smoke.log",
       "name": "local-coordinator-click-smoke",
@@ -144,7 +144,7 @@
         "run",
         "product-complete-smoke"
       ],
-      "duration_seconds": 57.977,
+      "duration_seconds": 57.356,
       "exit_code": 0,
       "log": "reports/submission-final-gate/latest/logs/10-product-complete-smoke.log",
       "name": "product-complete-smoke",
@@ -155,7 +155,7 @@
         "bash",
         "scripts/replit_smoke.sh"
       ],
-      "duration_seconds": 0.824,
+      "duration_seconds": 0.735,
       "exit_code": 0,
       "log": "reports/submission-final-gate/latest/logs/11-replit-smoke.log",
       "name": "replit-smoke",
@@ -169,7 +169,7 @@
         "run",
         "replit-navigation-smoke"
       ],
-      "duration_seconds": 8.571,
+      "duration_seconds": 8.755,
       "exit_code": 0,
       "log": "reports/submission-final-gate/latest/logs/12-replit-navigation-smoke.log",
       "name": "replit-navigation-smoke",
@@ -181,7 +181,7 @@
         "-m",
         "reliefqueue.submission_pack"
       ],
-      "duration_seconds": 0.134,
+      "duration_seconds": 0.158,
       "exit_code": 0,
       "log": "reports/submission-final-gate/latest/logs/13-submission-pack.log",
       "name": "submission-pack",

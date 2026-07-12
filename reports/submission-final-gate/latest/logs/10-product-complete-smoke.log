@@ -3,7 +3,7 @@ COMMAND=npm --prefix dashboard run product-complete-smoke
 > reliefqueue-dashboard@0.2.0 product-complete-smoke
 > node scripts/productClickSmoke.mjs product-complete
 
-product click smoke ports: api=37417 app=38159
+product click smoke ports: api=46461 app=33057
 ACTION_START action_id=command.open_case_detail route=/dashboard/assignments
 ACTION_START action_id=command.assign_or_reassign_worker route=/dashboard/assignments
 ACTION_START action_id=command.set_case_in_progress route=/dashboard/assignments

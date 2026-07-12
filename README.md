@@ -201,9 +201,9 @@ reports/latest/live_integrations/volunteer-surge/live_volunteer_surge_drill.json
 Use this path on a trusted host such as your laptop or an OCI Ubuntu/Debian-style VM:
 
 ```bash
-make implementation milestone-host-preflight
-make implementation milestone-live-proof
-make implementation milestone-live-clean
+make phase01-host-preflight
+make phase01-live-proof
+make phase01-live-clean
 ```
 
 If host preflight reports Docker/Compose is missing or unusable, inspect the scope first:
@@ -216,7 +216,7 @@ Then run guarded setup only when you accept the host changes:
 
 ```bash
 printf 'YES
-' | make implementation milestone-host-setup
+' | make phase01-host-setup
 ```
 
 The setup command is intentionally guarded. It should not install packages, modify groups, or start services without explicit `YES`.
@@ -232,6 +232,55 @@ make no-secrets
 ```
 
 Configured real endpoint smoke is allowed only with sanitized diagnostics and review-required AI output.
+
+### Judge-facing live AMD challenge mode
+
+The public AMD Impact route supports three explicitly synthetic, human-reviewed workloads:
+
+```text
+/dashboard/amd-impact
+Single incident | Complex dossier | Burst workload (up to 24 reports)
+```
+
+The live path is `POST /api/ai/live-verification` and `POST /api/ai/burst-verification`. The ordinary Command Center workflow advisory is a deterministic product demonstration and must not be presented as live AMD inference. A response is labelled **VERIFIED LIVE** only after provider transport succeeds, the challenge nonce is echoed, structured output passes validation, no fallback is used, and human review remains required.
+
+Configure the deployed backend with server-side secrets; never expose these values to browser code:
+
+```text
+AI_MODE=openai_compatible
+OPENAI_COMPAT_BASE_URL=https://<private-or-protected-vllm-host>/v1
+OPENAI_COMPAT_API_KEY=<deployment-secret>
+OPENAI_COMPAT_MODEL=reliefqueue-amd
+AI_PROVIDER_LABEL=AMD Developer Cloud
+AI_ACCELERATOR_LABEL=AMD Instinct MI300X
+AI_RUNTIME_LABEL=vLLM 0.23.0
+```
+
+The public judge mode applies bounded input, concurrency, per-client, and global request budgets. Inputs must be synthetic and contain no real personal or medical identifiers. The correct claim is that AMD MI300X plus vLLM makes concurrent structured analysis operationally practical and measurable; the project does not claim that no other hardware or model could process the same input.
+
+Run the reusable evaluator offline by default, or opt into a bounded trusted live run:
+
+```bash
+make amd-quality-offline-validation
+RELIEFQUEUE_CONFIRM_LIVE_AMD=YES AI_MODE=openai_compatible make amd-quality-live-validation
+```
+
+After public deployment, verify ordinary routes without provider calls, then run the separate opt-in live AMD proof:
+
+```bash
+RELIEFQUEUE_PUBLIC_URL=https://your-public-url.example make submission-public-check
+RELIEFQUEUE_PUBLIC_URL=https://your-public-url.example \
+RELIEFQUEUE_CONFIRM_LIVE_AMD=YES make submission-live-amd-check
+```
+
+### Submission package and final gate
+
+```bash
+make submission-pack
+make submission-final-gate
+```
+
+The final gate intentionally removes provider credentials and forces mock mode, so it proves product safety and reproducibility—not current AMD endpoint availability. The separate `submission-live-amd-check` is the deployment-time proof of real provider execution. Generated reports remain local artifacts and are not source-controlled; the frozen authoritative campaign is `fixtures/amd_evidence_campaign_v1.json`.
 
 ## Safety boundary
 

@@ -59,6 +59,7 @@ export function JudgeWalkthroughModal({ isOpen, onClose }: { isOpen: boolean; on
 
   // Step 3 — AMD single incident (editable)
   const [step3Input, setStep3Input] = useState('Flood near north sector. Family of 5 stranded on rooftop. Elderly woman needs insulin. Two young children present.');
+  const [step3Consent, setStep3Consent] = useState(false);
   const [step3Loading, setStep3Loading] = useState(false);
   const [step3Result, setStep3Result] = useState<AmdResult | null>(null);
 
@@ -121,8 +122,8 @@ export function JudgeWalkthroughModal({ isOpen, onClose }: { isOpen: boolean; on
         }
       ) as IntakeResult;
       setStep2Result(result);
-      actionLog.add('Judge Demo Walkthrough', 'Demo Execution', 'Success', { step: 2, name: 'AI Intake Fusion' });
-      addLog('Step 2 Complete', 'AI intake fusion advisory retrieved.');
+      actionLog.add('Judge Demo Walkthrough', 'Demo Execution', 'Success', { step: 2, name: 'Deterministic Workflow Advisory' });
+      addLog('Step 2 Complete', 'Deterministic workflow advisory retrieved; this is not the live AMD path.');
     } catch (err: any) {
       setStep2Result({ error: err?.message });
     } finally {
@@ -137,7 +138,7 @@ export function JudgeWalkthroughModal({ isOpen, onClose }: { isOpen: boolean; on
       const res = await fetch('/api/ai/live-verification', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: step3Input }),
+        body: JSON.stringify({ text: step3Input, workload_mode: 'single', synthetic_confirmed: true }),
       });
       const data: AmdResult = await res.json();
       setStep3Result(data);
@@ -166,7 +167,7 @@ export function JudgeWalkthroughModal({ isOpen, onClose }: { isOpen: boolean; on
       const res = await fetch('/api/ai/live-verification', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: DOSSIER_SAMPLE }),
+        body: JSON.stringify({ text: DOSSIER_SAMPLE, workload_mode: 'complex_dossier', synthetic_confirmed: true }),
       });
       const data: AmdResult = await res.json();
       setStep4Result(data);
@@ -196,7 +197,7 @@ export function JudgeWalkthroughModal({ isOpen, onClose }: { isOpen: boolean; on
       const res = await fetch('/api/ai/burst-verification', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reports: BURST_SAMPLE, concurrency: 2 }),
+        body: JSON.stringify({ reports: BURST_SAMPLE, concurrency: 2, synthetic_confirmed: true }),
       });
       const data: BurstResult = await res.json();
       setStep5Result(data);
@@ -266,10 +267,10 @@ export function JudgeWalkthroughModal({ isOpen, onClose }: { isOpen: boolean; on
             )}
           </StepCard>
 
-          {/* Step 2 — AI Intake Fusion */}
+          {/* Step 2 — deterministic workflow advisory, not live AMD */}
           <StepCard id={2} activeStep={activeStep} onSelect={() => setActiveStep(2)} icon={Cpu}
-            name="Step 2: AI Intake Fusion"
-            desc="Retrieve the advisory for case RQ-1042 — normalized urgency, need type, missing info, human_review_required=true."
+            name="Step 2: Deterministic Workflow Advisory"
+            desc="Retrieve the deterministic product-workflow advisory for RQ-1042. This demonstrates the review workflow and is not the live AMD inference path."
           >
             {activeStep === 2 && (
               <div className="mt-4 pt-4 border-t border-slate-100">
@@ -295,7 +296,7 @@ export function JudgeWalkthroughModal({ isOpen, onClose }: { isOpen: boolean; on
           {/* Step 3 — Try Your Own Incident */}
           <StepCard id={3} activeStep={activeStep} onSelect={() => setActiveStep(3)} icon={FileText}
             name="Step 3: Try Your Own Incident"
-            desc="Edit the synthetic incident text below and run it live on AMD MI300X. Displays request ID, nonce, latency, and advisory inline."
+            desc="Edit synthetic incident text and attempt a nonce-bound live request. AMD is claimed only after provider verification succeeds."
             highlight
           >
             {activeStep === 3 && (
@@ -307,10 +308,19 @@ export function JudgeWalkthroughModal({ isOpen, onClose }: { isOpen: boolean; on
                   className="w-full rounded-lg border border-slate-200 bg-slate-50 p-2.5 text-xs font-mono text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-400 resize-none mb-3"
                   placeholder="Enter your synthetic incident text here…"
                 />
+                <label className="mb-3 flex items-start gap-2 text-[11px] text-slate-600">
+                  <input
+                    type="checkbox"
+                    checked={step3Consent}
+                    onChange={event => setStep3Consent(event.target.checked)}
+                    className="mt-0.5"
+                  />
+                  I confirm this is synthetic demonstration data and contains no real personal information.
+                </label>
                 <div className="flex items-center justify-between gap-3 mb-3">
-                  <button type="button" disabled={step3Loading || !step3Input.trim()} onClick={runStep3}
+                  <button type="button" disabled={step3Loading || !step3Input.trim() || !step3Consent} onClick={runStep3}
                     className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2 px-6 rounded-lg text-sm flex items-center gap-2 disabled:opacity-50">
-                    {step3Loading ? <><RefreshCw className="w-4 h-4 animate-spin" /> Contacting AMD…</> : <><Zap className="w-4 h-4" /> Run My Input on AMD MI300X</>}
+                    {step3Loading ? <><RefreshCw className="w-4 h-4 animate-spin" /> Attempting live verification…</> : <><Zap className="w-4 h-4" /> Attempt Live AMD Analysis</>}
                   </button>
                   {step3Result && <button type="button" onClick={() => navigateStep('amd')} className="text-xs text-rq-primary hover:underline">Open AMD Impact →</button>}
                 </div>
@@ -349,7 +359,7 @@ export function JudgeWalkthroughModal({ isOpen, onClose }: { isOpen: boolean; on
           {/* Step 4 — Run a Complex Dossier */}
           <StepCard id={4} activeStep={activeStep} onSelect={() => setActiveStep(4)} icon={Bot}
             name="Step 4: Run a Complex Dossier"
-            desc="Submit a multi-report, multilingual, OCR-corrupted dossier to AMD MI300X. Shows how the model consolidates conflicting field reports."
+            desc="Attempt a nonce-bound live request for a multi-report, multilingual, OCR-corrupted dossier. AMD is claimed only after the response verifies live."
             highlight
           >
             {activeStep === 4 && (
@@ -360,7 +370,7 @@ export function JudgeWalkthroughModal({ isOpen, onClose }: { isOpen: boolean; on
                 <div className="flex items-center justify-between gap-3 mb-3">
                   <button type="button" disabled={step4Loading} onClick={runStep4}
                     className="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-6 rounded-lg text-sm flex items-center gap-2 disabled:opacity-50">
-                    {step4Loading ? <><RefreshCw className="w-4 h-4 animate-spin" /> Processing dossier…</> : <><Zap className="w-4 h-4" /> Run Complex Dossier on AMD MI300X</>}
+                    {step4Loading ? <><RefreshCw className="w-4 h-4 animate-spin" /> Processing dossier…</> : <><Zap className="w-4 h-4" /> Attempt Live Dossier Analysis</>}
                   </button>
                   {step4Result && <button type="button" onClick={() => navigateStep('amd')} className="text-xs text-rq-primary hover:underline">Open AMD Impact →</button>}
                 </div>
@@ -392,7 +402,7 @@ export function JudgeWalkthroughModal({ isOpen, onClose }: { isOpen: boolean; on
           {/* Step 5 — Simulate a Burst Workload */}
           <StepCard id={5} activeStep={activeStep} onSelect={() => setActiveStep(5)} icon={List}
             name="Step 5: Simulate a Burst Workload"
-            desc="Run 4 concurrent AMD MI300X requests. Each case gets a unique challenge nonce and request ID. Shows aggregate metrics inline."
+            desc="Attempt 4 concurrent live requests. Each case gets a unique challenge nonce and request ID; the UI counts only verified provider responses as AMD live."
             highlight
           >
             {activeStep === 5 && (
@@ -403,7 +413,7 @@ export function JudgeWalkthroughModal({ isOpen, onClose }: { isOpen: boolean; on
                 <div className="flex items-center justify-between gap-3 mb-3">
                   <button type="button" disabled={step5Loading} onClick={runStep5}
                     className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg text-sm flex items-center gap-2 disabled:opacity-50">
-                    {step5Loading ? <><RefreshCw className="w-4 h-4 animate-spin" /> Running burst…</> : <><Zap className="w-4 h-4" /> Simulate Burst Workload on AMD MI300X</>}
+                    {step5Loading ? <><RefreshCw className="w-4 h-4 animate-spin" /> Running burst…</> : <><Zap className="w-4 h-4" /> Attempt Live AMD Burst</>}
                   </button>
                   {step5Result && <button type="button" onClick={() => navigateStep('amd')} className="text-xs text-rq-primary hover:underline">Open AMD Impact →</button>}
                 </div>
@@ -412,7 +422,7 @@ export function JudgeWalkthroughModal({ isOpen, onClose }: { isOpen: boolean; on
                   <div className="rounded-xl p-4 border border-blue-300 bg-blue-50 text-xs">
                     <div className="font-black text-sm text-blue-800 mb-2 flex items-center gap-2">
                       <CheckCircle className="w-5 h-5 text-emerald-600" />
-                      Burst Complete — {step5Result.succeeded}/{step5Result.submitted} AMD Live Responses
+                      Burst Result — {step5Result.succeeded}/{step5Result.submitted} Verified AMD Live Responses
                     </div>
                     <div className="grid grid-cols-2 gap-1 font-mono mb-3 text-slate-700">
                       <div>Batch ID: <span className="text-slate-900 font-bold">{step5Result.batch_id}</span></div>

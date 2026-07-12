@@ -3,7 +3,7 @@ COMMAND=npm --prefix dashboard run field-app-click-smoke
 > reliefqueue-dashboard@0.2.0 field-app-click-smoke
 > node scripts/productClickSmoke.mjs field
 
-product click smoke ports: api=40913 app=40119
+product click smoke ports: api=44515 app=46025
 ACTION_START action_id=field.open_case_detail route=/field/my-cases?worker_id=worker-alpha-boat
 ACTION_START action_id=field.back_to_case_list route=/field/cases/RQ-1042
 ACTION_START action_id=field.acknowledge_assignment route=/field/cases/RQ-1042
