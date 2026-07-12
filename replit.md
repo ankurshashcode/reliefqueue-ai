@@ -37,7 +37,7 @@ product API facade from one origin, bound to `0.0.0.0:$PORT` (defaults to
   `make replit-build` first if `dashboard/dist` is missing, so a fresh
   import/clone works with just this one command.
 - `make replit-smoke` — boots the server on a scratch port and checks
-  `/healthz`, the `/api/product/*` facade, SPA fallback routes, and that
+  `/api/health`, the `/api/product/*` facade, SPA fallback routes, and that
   unknown static assets 404.
 
 Preview routes once the workflow is running:
@@ -45,7 +45,7 @@ Preview routes once the workflow is running:
 - `/field/my-work`, `/field/my-cases?worker_id=worker-alpha-boat`, `/field/cases/RQ-1042`, `/field/outbox`
 - `/local-coordinator`
 - `/internal/classic-dashboard` (internal debug view)
-- `GET /healthz` — plain JSON health check
+- `GET /api/health` — plain JSON health check
 
 The server (`src/reliefqueue/product_api.py`, `serve()`) statically serves
 `dashboard/dist`, answers `/api/product/*` from the same origin, and falls
@@ -67,7 +67,7 @@ User navigation is integrated in the product UI:
 - each role header provides a workspace switcher for Command Center, Field Coordinator, and Local Coordinator;
 - Field Coordinator has persistent My Work, My Cases, Outbox, and Help navigation;
 - case detail is reached by selecting a case card;
-- Capability Map consumes `/healthz` and `/api/product/command/overview` and shows human-readable runtime status instead of linking users to raw JSON.
+- Capability Map consumes `/api/health` and `/api/product/command/overview` and shows human-readable runtime status instead of linking users to raw JSON.
 
 ## Project structure (do not restructure without asking)
 

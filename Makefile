@@ -429,7 +429,7 @@ public-ship-check:
 	$(PYTHON) scripts/public_ship_check.py
 
 # Single-process Replit deployment: build the dashboard once, then serve the
-# static build plus the /api/product/* facade and /healthz from one Python
+# static build plus the /api/product/* facade and /api/health from one Python
 # process bound to 0.0.0.0:$PORT. No database/queue/AI credentials required.
 replit-build: dashboard-build
 

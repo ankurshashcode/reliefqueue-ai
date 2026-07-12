@@ -83,7 +83,7 @@ export function CapabilityMap() {
     setCapabilityError(null);
     try {
       const [healthResponse, overviewResponse, capabilityPayload] = await Promise.all([
-        fetch('/healthz', { cache: 'no-store' }),
+        fetch('/api/health', { cache: 'no-store' }),
         fetch('/api/product/command/overview', { cache: 'no-store' }),
         fetchAmdCapability(),
       ]);

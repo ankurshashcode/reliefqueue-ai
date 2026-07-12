@@ -97,8 +97,8 @@ async function main() {
   const browser = await chromium.launch({ headless: true });
   const checks = [];
   try {
-    await waitForJson(`${apiOrigin}/healthz`, 'direct Product API health');
-    await waitForJson(`${appOrigin}/healthz`, 'proxied health');
+    await waitForJson(`${apiOrigin}/api/health`, 'direct Product API health');
+    await waitForJson(`${appOrigin}/api/health`, 'proxied health');
 
     const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
 

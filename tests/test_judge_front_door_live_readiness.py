@@ -14,7 +14,12 @@ class JudgeFrontDoorLiveReadinessTests(unittest.TestCase):
         self.assertIn("RELIEFQUEUE_PRODUCT_API_TARGET", text)
         self.assertIn("http://127.0.0.1:5001", text)
         self.assertIn("'/api'", text)
-        self.assertIn("'/healthz'", text)
+        capability_map = self.read("dashboard/src/commandStudio/views/CapabilityMap.tsx")
+        self.assertIn("fetch('/api/health'", capability_map)
+        product_api = self.read("src/reliefqueue/product_api.py")
+        self.assertIn('if route == "/api/health":', product_api)
+        public_check = self.read("scripts/submission_public_check.py")
+        self.assertIn('request(base, "/api/health", expect_json=True)', public_check)
 
     def test_front_door_fetches_use_readable_json_boundary(self):
         helper = self.read("dashboard/src/commandStudio/lib/httpJson.ts")

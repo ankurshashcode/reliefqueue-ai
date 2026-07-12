@@ -27,7 +27,7 @@ on_error() {
 }
 trap on_error ERR
 
-if curl -fsS "$base_url/healthz" >/dev/null 2>&1; then
+if curl -fsS "$base_url/api/health" >/dev/null 2>&1; then
   echo "replit-smoke FAIL: $base_url is already in use"
   exit 1
 fi
@@ -37,7 +37,7 @@ server_pid=$!
 
 ready=0
 for _ in $(seq 1 40); do
-  if curl -fsS "$base_url/healthz" >/dev/null 2>&1; then
+  if curl -fsS "$base_url/api/health" >/dev/null 2>&1; then
     ready=1
     break
   fi
@@ -46,7 +46,7 @@ for _ in $(seq 1 40); do
 done
 [[ "$ready" == "1" ]]
 
-curl -fsS "$base_url/healthz" |
+curl -fsS "$base_url/api/health" |
   python3 -c 'import json,sys; assert json.load(sys.stdin) == {"status":"ok"}'
 curl -fsS "$base_url/api/product/command/overview" |
   python3 -c 'import json,sys; data=json.load(sys.stdin); assert "summary" in data'

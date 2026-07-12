@@ -23,10 +23,6 @@ export default defineConfig({
         target: productApiTarget,
         changeOrigin: false,
       },
-      '/healthz': {
-        target: productApiTarget,
-        changeOrigin: false,
-      },
     },
   },
 });

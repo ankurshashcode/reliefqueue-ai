@@ -418,7 +418,7 @@ def _checklist(facts: dict[str, Any]) -> str:
 ## Final manual review
 
 - [ ] Open the public URL in a private/incognito window.
-- [ ] Verify `/healthz` and the main dashboard load without authentication.
+- [ ] Verify `/api/health` and the main dashboard load without authentication.
 - [ ] Verify AMD Impact and Capability Map show historical/live/request separation.
 - [ ] Verify Command Center, Field Coordinator, and Local Coordinator role switching.
 - [ ] Confirm the video, slide PDF, cover image, repository, and application links all open.

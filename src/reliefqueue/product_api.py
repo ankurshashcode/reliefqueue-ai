@@ -917,7 +917,7 @@ def action_map_check(root: Path = ROOT) -> int:
 DASHBOARD_DIST = ROOT / "dashboard" / "dist"
 
 # Client-side routed SPA path prefixes. Any GET that doesn't match a static
-# file under dashboard/dist and doesn't start with /api/ or /healthz falls
+# file under dashboard/dist and isn't a handled API route falls
 # back to index.html so the dashboard's own router can render the route.
 SPA_ROUTE_PREFIXES = (
     "/dashboard",
@@ -958,7 +958,7 @@ def serve(host: str, port: int, root: Path = ROOT) -> int:
         def do_GET(self) -> None:  # noqa: N802
             parsed = urlparse(self.path)
             route = parsed.path.rstrip("/") or "/"
-            if route == "/healthz":
+            if route == "/api/health":
                 self._json(200, {"status": "ok"})
                 return
             if route.startswith("/api/product/"):

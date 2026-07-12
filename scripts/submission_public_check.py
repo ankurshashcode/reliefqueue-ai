@@ -62,10 +62,10 @@ def run_check(base_url: str, output_dir: Path) -> dict[str, object]:
     checks: list[dict[str, object]] = []
     failures: list[str] = []
 
-    health = request(base, "/healthz", expect_json=True)
+    health = request(base, "/api/health", expect_json=True)
     checks.append(health)
     if health.get("status") != 200 or health.get("json") != {"status": "ok"}:
-        failures.append("/healthz did not return the expected status")
+        failures.append("/api/health did not return the expected status")
 
     evidence = request(base, "/api/product/amd/evidence", expect_json=True)
     checks.append(evidence)

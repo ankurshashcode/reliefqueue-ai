@@ -124,8 +124,8 @@ async function main() {
   const browser = await chromium.launch({ headless: true });
   const checks = [];
   try {
-    await waitForJson(`${apiOrigin}/healthz`, 'direct Product API health');
-    await waitForJson(`${appOrigin}/healthz`, 'Vite-proxied health');
+    await waitForJson(`${apiOrigin}/api/health`, 'direct Product API health');
+    await waitForJson(`${appOrigin}/api/health`, 'Vite-proxied health');
     const capability = await waitForJson(
       `${appOrigin}/api/product/amd/capability`,
       'Vite-proxied AMD capability',
