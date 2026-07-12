@@ -193,6 +193,8 @@ async function main() {
   const unexpectedHttp = [];
   const clicks = [];
   const routes = [];
+  const screenshotReviews = [];
+  const expectedScreenshotCount = 5;
 
   page.on('console', msg => { if (msg.type() === 'error') consoleErrors.push(msg.text()); });
   page.on('pageerror', error => pageErrors.push(error.message));
@@ -240,21 +242,377 @@ async function main() {
     });
   }
 
+  async function captureReviewedScreenshot({
+    filename,
+    routePath,
+    readyLocator,
+    focusLocator = null,
+    requiredText = [],
+    forbiddenText = [],
+  }) {
+    await readyLocator.waitFor({ state: 'visible', timeout: 30000 });
+
+    let focusInViewport = null;
+    let focusVisiblePixels = null;
+    let focusScrollContainer = null;
+    let focusTextSample = null;
+    if (focusLocator) {
+      await focusLocator.waitFor({ state: 'visible', timeout: 30000 });
+      await focusLocator.evaluate((element) => {
+        const scrollableAncestors = [];
+        let current = element.parentElement;
+
+        while (current) {
+          const style = getComputedStyle(current);
+          const isScrollable = (
+            current.scrollHeight > current.clientHeight + 1
+            && ['auto', 'scroll'].includes(style.overflowY)
+          );
+          if (isScrollable) scrollableAncestors.push(current);
+          current = current.parentElement;
+        }
+
+        for (const container of scrollableAncestors) {
+          const elementRect = element.getBoundingClientRect();
+          const containerRect = container.getBoundingClientRect();
+          const topInset = Math.min(
+            120,
+            Math.max(32, container.clientHeight * 0.12),
+          );
+          const desiredScrollTop = (
+            container.scrollTop
+            + elementRect.top
+            - containerRect.top
+            - topInset
+          );
+          const maximumScrollTop = Math.max(
+            0,
+            container.scrollHeight - container.clientHeight,
+          );
+          container.scrollTop = Math.max(
+            0,
+            Math.min(desiredScrollTop, maximumScrollTop),
+          );
+        }
+      });
+      await page.evaluate(() => new Promise(resolve => {
+        requestAnimationFrame(() => requestAnimationFrame(resolve));
+      }));
+
+      const focusGeometry = await focusLocator.evaluate((element) => {
+        let scrollContainer = null;
+        let current = element.parentElement;
+        while (current) {
+          const style = getComputedStyle(current);
+          if (
+            current.scrollHeight > current.clientHeight + 1
+            && ['auto', 'scroll'].includes(style.overflowY)
+          ) {
+            scrollContainer = current;
+            break;
+          }
+          current = current.parentElement;
+        }
+
+        const focusRect = element.getBoundingClientRect();
+        const containerRect = scrollContainer
+          ? scrollContainer.getBoundingClientRect()
+          : {
+              top: 0,
+              left: 0,
+              right: window.innerWidth,
+              bottom: window.innerHeight,
+            };
+        const visibleTop = Math.max(
+          focusRect.top,
+          containerRect.top,
+          0,
+        );
+        const visibleBottom = Math.min(
+          focusRect.bottom,
+          containerRect.bottom,
+          window.innerHeight,
+        );
+        const visiblePixels = Math.max(0, visibleBottom - visibleTop);
+        const startsInsideContainer = (
+          focusRect.top >= containerRect.top
+          && focusRect.top <= containerRect.bottom - 80
+          && focusRect.left < containerRect.right
+          && focusRect.right > containerRect.left
+        );
+
+        return {
+          startsInsideContainer,
+          visiblePixels,
+          focusTop: focusRect.top,
+          focusBottom: focusRect.bottom,
+          containerTop: containerRect.top,
+          containerBottom: containerRect.bottom,
+          scrollContainer: scrollContainer
+            ? {
+                className: scrollContainer.className,
+                scrollTop: scrollContainer.scrollTop,
+                clientHeight: scrollContainer.clientHeight,
+                scrollHeight: scrollContainer.scrollHeight,
+              }
+            : null,
+        };
+      });
+
+      focusInViewport = Boolean(
+        focusGeometry.startsInsideContainer
+        && focusGeometry.visiblePixels >= 120
+      );
+      focusVisiblePixels = focusGeometry.visiblePixels;
+      focusScrollContainer = focusGeometry.scrollContainer;
+      if (!focusInViewport) {
+        throw new Error(
+          `Screenshot ${filename} result focus was not aligned inside its scroll container; `
+          + `geometry=${JSON.stringify(focusGeometry)}`,
+        );
+      }
+      focusTextSample = (await focusLocator.innerText()).slice(0, 240);
+    } else {
+      await page.evaluate(() => new Promise(resolve => {
+        requestAnimationFrame(() => requestAnimationFrame(resolve));
+      }));
+    }
+
+    const bodyText = await page.locator('body').innerText();
+    const missingRequiredText = requiredText.filter(value => !bodyText.includes(value));
+    const presentForbiddenText = forbiddenText.filter(value => bodyText.includes(value));
+    if (missingRequiredText.length || presentForbiddenText.length) {
+      throw new Error(
+        `Screenshot ${filename} did not reach its reviewed visible state; `
+        + `missing=${JSON.stringify(missingRequiredText)}; `
+        + `forbidden=${JSON.stringify(presentForbiddenText)}`,
+      );
+    }
+
+    const screenshotPath = path.join(screenshotDir, filename);
+    await page.screenshot({ path: screenshotPath, fullPage: false });
+    const screenshotBytes = await fs.readFile(screenshotPath);
+    const pngSignature = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
+    const pngSignatureValid = screenshotBytes.subarray(0, 8).equals(pngSignature);
+    if (!pngSignatureValid || screenshotBytes.length < 10000) {
+      throw new Error(
+        `Screenshot ${filename} failed PNG integrity review; `
+        + `signature=${pngSignatureValid}; bytes=${screenshotBytes.length}`,
+      );
+    }
+
+    screenshotReviews.push({
+      filename,
+      route: routePath,
+      status: 'PASS',
+      review_method: 'pre-capture visible-state assertions plus post-capture PNG integrity',
+      required_text: requiredText,
+      forbidden_text: forbiddenText,
+      png_signature_valid: pngSignatureValid,
+      size_bytes: screenshotBytes.length,
+      body_state_hash: hash(bodyText),
+      focus_scrolled_into_view: focusLocator ? true : false,
+      focus_scroll_strategy: focusLocator
+        ? 'explicit-scrollable-ancestor-alignment'
+        : null,
+      focus_in_viewport: focusInViewport,
+      focus_visible_pixels: focusVisiblePixels,
+      focus_scroll_container: focusScrollContainer,
+      focus_text_sample: focusTextSample,
+    });
+  }
+
+  async function verifyPriorityNavigation() {
+    const expectedPriorityLabels = [
+      'AMD Impact',
+      'Capability Map',
+      'AI Control',
+      'AI Intake',
+    ];
+
+    // Wait for the actual AMD screen first, then locate the surrounding
+    // Command Center shell semantically. In the standalone Playwright runner,
+    // getByTestId('command-sidebar') was observed timing out even though the
+    // rendered aside and its navigation were present. Geometry below remains
+    // the authoritative visibility check.
+    await page.getByTestId('amd-single-input').waitFor({
+      state: 'visible',
+      timeout: 30000,
+    });
+    const sidebar = page
+      .locator('aside')
+      .filter({ hasText: 'AMD / vLLM Demo' })
+      .first();
+    await sidebar.waitFor({ state: 'attached', timeout: 30000 });
+
+    const sidebarTestId = await sidebar.getAttribute('data-testid');
+    if (sidebarTestId !== 'command-sidebar') {
+      throw new Error(
+        `Command sidebar semantic locator resolved an unexpected element; `
+        + `data-testid=${JSON.stringify(sidebarTestId)}`,
+      );
+    }
+
+    const priorityGroup = sidebar
+      .locator('[data-testid="sidebar-priority-group"]')
+      .first();
+    await priorityGroup.waitFor({ state: 'attached', timeout: 30000 });
+
+    const priorityButtons = priorityGroup.getByRole('button');
+    const priorityLabels = (
+      await priorityButtons.allInnerTexts()
+    ).map((value) => value.trim().replace(/\s+/g, ' '));
+    if (JSON.stringify(priorityLabels) !== JSON.stringify(expectedPriorityLabels)) {
+      throw new Error(
+        `AMD priority navigation order mismatch; `
+        + `expected=${JSON.stringify(expectedPriorityLabels)}; `
+        + `observed=${JSON.stringify(priorityLabels)}`,
+      );
+    }
+
+    const geometry = await sidebar.evaluate((element) => {
+      const style = getComputedStyle(element);
+      const sidebarRect = element.getBoundingClientRect();
+      const width = Number.parseFloat(style.width);
+      const rendered = (
+        style.display !== 'none'
+        && style.visibility !== 'hidden'
+        && Number.parseFloat(style.opacity || '1') > 0
+        && sidebarRect.width > 0
+        && sidebarRect.height > 0
+      );
+      const visibleInViewport = (
+        rendered
+        && sidebarRect.bottom > 0
+        && sidebarRect.top < window.innerHeight
+        && sidebarRect.right > 0
+        && sidebarRect.left < window.innerWidth
+      );
+      const buttons = [...element.querySelectorAll('button')].map((button) => {
+        const rect = button.getBoundingClientRect();
+        return {
+          text: button.textContent?.trim().replace(/\s+/g, ' ') || '',
+          top: rect.top,
+          bottom: rect.bottom,
+          left: rect.left,
+          right: rect.right,
+          visibleInViewport: (
+            rect.bottom > 0
+            && rect.top < window.innerHeight
+            && rect.right > 0
+            && rect.left < window.innerWidth
+          ),
+          labelFits: button.scrollWidth <= button.clientWidth + 1,
+        };
+      });
+      return {
+        width,
+        rendered,
+        visibleInViewport,
+        dataTestId: element.getAttribute('data-testid'),
+        rect: {
+          top: sidebarRect.top,
+          right: sidebarRect.right,
+          bottom: sidebarRect.bottom,
+          left: sidebarRect.left,
+          width: sidebarRect.width,
+          height: sidebarRect.height,
+        },
+        buttons,
+      };
+    });
+
+    if (!geometry.rendered || !geometry.visibleInViewport) {
+      throw new Error(
+        `Command sidebar is not visibly rendered in the desktop viewport; `
+        + `geometry=${JSON.stringify(geometry)}`,
+      );
+    }
+
+    if (geometry.width < 216 || geometry.width > 232) {
+      throw new Error(
+        `Desktop sidebar width must be approximately 224px; `
+        + `observed=${geometry.width}`,
+      );
+    }
+
+    const priorityRows = expectedPriorityLabels.map((label) => (
+      geometry.buttons.find((button) => button.text === label)
+    ));
+    if (
+      priorityRows.some((row) => !row)
+      || priorityRows.some((row) => !row.visibleInViewport)
+    ) {
+      throw new Error(
+        `AMD priority navigation is not initially visible; `
+        + `rows=${JSON.stringify(priorityRows)}`,
+      );
+    }
+    const overflowingLabels = geometry.buttons.filter(
+      (button) => !button.labelFits,
+    );
+    if (overflowingLabels.length) {
+      throw new Error(
+        `Sidebar label overflow detected: `
+        + `${JSON.stringify(overflowingLabels)}`,
+      );
+    }
+
+    const evidence = {
+      status: 'PASS',
+      expected_priority_labels: expectedPriorityLabels,
+      observed_priority_labels: priorityLabels,
+      sidebar_width_px: geometry.width,
+      priority_items_initially_visible: true,
+      all_navigation_labels_fit: true,
+      sidebar_selector_strategy: 'semantic-aside-with-labeled-priority-group',
+      sidebar_data_testid: geometry.dataTestId,
+      sidebar_visible_in_viewport: geometry.visibleInViewport,
+      sidebar_rect: geometry.rect,
+      button_geometry: geometry.buttons,
+    };
+    await fs.writeFile(
+      path.join(evidenceRoot, 'navigation-evidence.json'),
+      JSON.stringify(evidence, null, 2),
+    );
+    return evidence;
+  }
+
+  let navigationEvidence = null;
+
   try {
     const impactRoute = '/dashboard/amd-impact';
     await page.goto(`${baseUrl}${impactRoute}`, { waitUntil: 'domcontentloaded' });
-    routes.push({ route: impactRoute, status: 'loaded' });
+    navigationEvidence = await verifyPriorityNavigation();
+    routes.push({
+      route: impactRoute,
+      status: 'loaded',
+      priority_navigation_verified: true,
+    });
     await page.getByTestId('amd-single-input').fill('Lotus Warehouse: 17 people, possibly 21; two wheelchair users; east transformer road blocked; west route small vehicles; water lasts six hours.');
     await page.getByTestId('amd-single-consent').check();
     await clickWithEvidence('amd.single.run', impactRoute, page.getByTestId('amd-single-run'), page.getByTestId('amd-single-structured-result'));
     await page.getByText('VERIFIED LIVE AMD ANALYSIS').waitFor();
-    await page.screenshot({ path: path.join(screenshotDir, 'amd-single.png'), fullPage: true });
+    await captureReviewedScreenshot({
+      filename: 'amd-single.png',
+      routePath: impactRoute,
+      readyLocator: page.getByTestId('amd-single-structured-result'),
+      requiredText: ['VERIFIED LIVE AMD ANALYSIS'],
+      forbiddenText: ['Loading AMD Impact', 'Native AI Studio app failed to render'],
+    });
 
     await page.getByRole('button', { name: /Complex Dossier/i }).click();
     await page.getByTestId('amd-complex-input').fill('REPORT-001 and REPORT-003 likely duplicate. REPORT-006 says bridge collapsed; REPORT-007 police says damaged, not collapsed. Community Hall 80 reduced to 43 with 67 registered. 12 insulin doses for 19 patients. Wheelchair-ramp van and oxygen-reserved van. Textile godown supersedes Clinic Road.');
     await page.locator('#dossier-consent').check();
     await clickWithEvidence('amd.dossier.run', impactRoute, page.getByTestId('amd-complex-run'), page.getByTestId('amd-complex-structured-result'));
-    await page.screenshot({ path: path.join(screenshotDir, 'amd-dossier.png'), fullPage: true });
+    await captureReviewedScreenshot({
+      filename: 'amd-dossier.png',
+      routePath: impactRoute,
+      readyLocator: page.getByTestId('amd-complex-structured-result'),
+      focusLocator: page.getByTestId('amd-complex-structured-result'),
+      requiredText: ['VERIFIED LIVE AMD ANALYSIS', 'Complex Dossier'],
+      forbiddenText: ['Loading AMD Impact', 'Native AI Studio app failed to render'],
+    });
 
     await page.getByRole('button', { name: /Burst Workload/i }).click();
     await page.getByTestId('amd-burst-input').fill('Case one: 9 people need water.\n\nCase two: wheelchair user, north road blocked, south lane open.\n\nCase three: 12 insulin doses for 19 patients.');
@@ -271,7 +629,14 @@ async function main() {
     await page.getByTestId('amd-burst-consent').check();
     await clickWithEvidence('amd.burst.run', impactRoute, page.getByTestId('amd-run-burst'), page.getByTestId('amd-burst-result'));
     await page.getByText('AMD-GENERATED · NONCE-BOUND').waitFor();
-    await page.screenshot({ path: path.join(screenshotDir, 'amd-burst.png'), fullPage: true });
+    await captureReviewedScreenshot({
+      filename: 'amd-burst.png',
+      routePath: impactRoute,
+      readyLocator: page.getByTestId('amd-burst-result'),
+      focusLocator: page.getByTestId('amd-burst-result'),
+      requiredText: ['AMD-GENERATED · NONCE-BOUND'],
+      forbiddenText: ['Loading AMD Impact', 'Native AI Studio app failed to render'],
+    });
 
     const intakeRoute = '/dashboard/intake';
     await page.goto(`${baseUrl}${intakeRoute}`, { waitUntil: 'domcontentloaded' });
@@ -279,36 +644,94 @@ async function main() {
     await clickWithEvidence('intake.normalize', intakeRoute, page.getByTestId('ai-intake-normalize-RM-001'), page.getByTestId('ai-intake-normalized-record'));
     await clickWithEvidence('intake.run_amd', intakeRoute, page.getByTestId('ai-intake-run-advisory'), page.getByTestId('ai-intake-operational-analysis'));
     await page.getByText('VERIFIED LIVE AMD ANALYSIS').waitFor();
-    await page.screenshot({ path: path.join(screenshotDir, 'ai-intake.png'), fullPage: true });
+    await captureReviewedScreenshot({
+      filename: 'ai-intake.png',
+      routePath: intakeRoute,
+      readyLocator: page.getByTestId('ai-intake-operational-analysis'),
+      requiredText: ['VERIFIED LIVE AMD ANALYSIS'],
+      forbiddenText: ['Loading operational screen...', 'Native AI Studio app failed to render'],
+    });
 
     const capabilityRoute = '/dashboard/capability-map';
     await page.goto(`${baseUrl}${capabilityRoute}`, { waitUntil: 'domcontentloaded' });
-    routes.push({ route: capabilityRoute, status: 'loaded' });
-    const capabilityText = await page.locator('body').innerText();
-    if (capabilityText.includes('Pending Verification') || capabilityText.includes('Default Model')) throw new Error('Capability Map contains forbidden placeholder copy.');
-    await page.screenshot({ path: path.join(screenshotDir, 'capability-map.png'), fullPage: true });
+    await page.getByTestId('native-loading-shell').waitFor({ state: 'hidden', timeout: 30000 });
+    const capabilityHeading = page.getByRole('heading', {
+      name: 'Capability Map & Readiness',
+      exact: true,
+    });
+    await capabilityHeading.waitFor({ state: 'visible', timeout: 30000 });
+    await page.getByText('Live Deployment Status', { exact: true }).waitFor({ state: 'visible', timeout: 30000 });
+    await page.getByText('AMD Developer Cloud', { exact: false }).first().waitFor({ state: 'visible', timeout: 30000 });
+    routes.push({
+      route: capabilityRoute,
+      status: 'ready',
+      ready_marker: 'Capability Map & Readiness',
+      lazy_loading_shell_absent: true,
+    });
+    await captureReviewedScreenshot({
+      filename: 'capability-map.png',
+      routePath: capabilityRoute,
+      readyLocator: capabilityHeading,
+      requiredText: [
+        'Capability Map & Readiness',
+        'Live Deployment Status',
+        'AMD Developer Cloud',
+        'AMD Instinct MI300X',
+        'vLLM 0.23.0',
+      ],
+      forbiddenText: [
+        'Loading Capability Map',
+        'Pending Verification',
+        'Default Model',
+        'Native AI Studio app failed to render',
+      ],
+    });
   } finally {
     await browser.close();
   }
 
+  const reviewedScreenshotCount = screenshotReviews.filter(review => review.status === 'PASS').length;
+  const screenshotReviewFailed = (
+    screenshotReviews.length !== expectedScreenshotCount
+    || reviewedScreenshotCount !== expectedScreenshotCount
+  );
   const browserEvidence = {
-    status: consoleErrors.length || pageErrors.length || failedRequests.length || unexpectedHttp.length ? 'FAIL' : 'PASS',
+    status: consoleErrors.length || pageErrors.length || failedRequests.length || unexpectedHttp.length || screenshotReviewFailed ? 'FAIL' : 'PASS',
     console_errors: consoleErrors.length,
     page_errors: pageErrors.length,
     failed_requests: failedRequests.length,
     unexpected_4xx_5xx: unexpectedHttp.length,
     parser_regression_exact_count: 3,
-    screenshots_captured: 4,
-    screenshots_reviewed: 0,
+    screenshots_captured: screenshotReviews.length,
+    screenshots_reviewed: reviewedScreenshotCount,
+    human_screenshots_reviewed: 0,
+    screenshot_review_method: 'automated visible-state assertions plus PNG integrity; human review occurs after evidence handoff',
     visual_checks_performed: [
       'required result regions became visible',
       'verified-live provenance banner became visible',
       'burst parsed exactly three cases',
-      'forbidden placeholder copy absent on Capability Map',
+      'Capability Map lazy-loading shell disappeared before capture',
+      'Capability Map deployment and AMD runtime content became visible',
+      'forbidden placeholder and runtime-error copy absent on Capability Map',
+      'all five PNG screenshots passed file-integrity review',
+      'AMD-priority navigation remained visible at the top of the narrower sidebar',
+      'all sidebar labels fit without horizontal overflow',
+      'dossier and burst result cards were aligned inside their scroll container before capture',
     ],
+    screenshot_reviews: screenshotReviews,
+    navigation: navigationEvidence,
     details: { consoleErrors, pageErrors, failedRequests, unexpectedHttp },
   };
   await fs.writeFile(path.join(evidenceRoot, 'browser-evidence.json'), JSON.stringify(browserEvidence, null, 2));
+  await fs.writeFile(path.join(evidenceRoot, 'screenshot-review.json'), JSON.stringify({
+    status: screenshotReviewFailed ? 'FAIL' : 'PASS',
+    expected_screenshots: expectedScreenshotCount,
+    captured_screenshots: screenshotReviews.length,
+    reviewed_screenshots: reviewedScreenshotCount,
+    human_screenshots_reviewed: 0,
+    review_method: browserEvidence.screenshot_review_method,
+    reviews: screenshotReviews,
+  }, null, 2));
   await fs.writeFile(path.join(evidenceRoot, 'click-manifest.json'), JSON.stringify(clicks, null, 2));
   await fs.writeFile(path.join(evidenceRoot, 'route-matrix.json'), JSON.stringify({ routes }, null, 2));
   if (browserEvidence.status !== 'PASS' || clicks.some(click => click.post_click_assertion !== 'PASS')) {
