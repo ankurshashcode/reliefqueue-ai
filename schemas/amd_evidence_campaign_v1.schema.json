@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://reliefqueue.example/schemas/amd_evidence_campaign_v1.schema.json",
+  "title": "ReliefQueue AMD Evidence Campaign v1",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "campaign_id",
+    "evidence_scope",
+    "campaign_type",
+    "uniform_prompt_run",
+    "direct_vllm_endpoint_only",
+    "application_fallback_exercised",
+    "deployment",
+    "final_resolved_quality",
+    "case_mix",
+    "campaign_stages",
+    "cases",
+    "limitations"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "reliefqueue-amd-evidence/v1"
+    },
+    "campaign_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "evidence_scope": {
+      "const": "historical_verified_campaign"
+    },
+    "campaign_type": {
+      "const": "staged_composite"
+    },
+    "uniform_prompt_run": {
+      "const": false
+    },
+    "direct_vllm_endpoint_only": {
+      "const": true
+    },
+    "application_fallback_exercised": {
+      "const": false
+    },
+    "deployment": {
+      "type": "object"
+    },
+    "final_resolved_quality": {
+      "type": "object"
+    },
+    "case_mix": {
+      "type": "object"
+    },
+    "campaign_stages": {
+      "type": "array",
+      "minItems": 4
+    },
+    "cases": {
+      "type": "array",
+      "minItems": 24,
+      "maxItems": 24
+    },
+    "limitations": {
+      "type": "array",
+      "minItems": 4
+    }
+  },
+  "additionalProperties": true
+}

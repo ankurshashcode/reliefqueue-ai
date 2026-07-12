@@ -155,6 +155,9 @@ amd-benchmark:
 amd-report:
 	PYTHONPATH=src $(PYTHON) -m reliefqueue.cli amd-report
 
+amd-evidence-validate:
+	PYTHONPATH=src $(PYTHON) scripts/amd_evidence_report.py
+
 operator:
 	PYTHONPATH=src $(PYTHON) -m reliefqueue.cli operator
 

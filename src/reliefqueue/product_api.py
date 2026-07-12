@@ -42,6 +42,7 @@ from .amd_quality import (
     sanitize_text,
     synthesize_burst,
 )
+from .amd_evidence import amd_capability_payload, public_amd_evidence_payload
 from .ai import AIConfig, OpenAICompatibleAdapter
 from .assignment import suggest_assignments
 from .cli import ROOT, build_cases
@@ -1094,6 +1095,10 @@ def _route(method: str, path: str, body: dict[str, Any]) -> dict[str, Any]:
     route = parsed.path.rstrip("/")
     if method == "GET" and route == "/api/product/command/overview":
         return command_overview()
+    if method == "GET" and route == "/api/product/amd/evidence":
+        return public_amd_evidence_payload()
+    if method == "GET" and route == "/api/product/amd/capability":
+        return amd_capability_payload()
     if method == "GET" and route == "/api/product/session/me":
         return {"session": resolve_actor(query.get("actor_id", ["command-operator"])[0]), "available_identities": list(IDENTITIES.values())}
     if method == "GET" and route == "/api/product/monitoring":
