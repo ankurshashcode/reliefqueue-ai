@@ -247,6 +247,7 @@ export function AmdImpact() {
   const [capabilityError, setCapabilityError] = useState<string | null>(null);
   const [lastRequest, setLastRequest] = useState<CurrentRequestPlane | null>(null);
   const [lastVerifiedMetadata, setLastVerifiedMetadata] = useState<any | null>(null);
+  const [walkthroughNotice, setWalkthroughNotice] = useState<string | null>(null);
 
   const refreshEvidence = async () => {
     setCapabilityLoading(true);
@@ -261,6 +262,37 @@ export function AmdImpact() {
   };
 
   useEffect(() => { void refreshEvidence(); }, []);
+
+  useEffect(() => {
+    const raw = window.sessionStorage.getItem('reliefqueue.walkthrough.amd.v1');
+    if (!raw) return;
+    try {
+      const handoff = JSON.parse(raw);
+      const tab = handoff?.tab;
+      const input = String(handoff?.input || '');
+      if (tab === 'single') {
+        setActiveTab('single');
+        if (input) setSingleInput(input);
+      } else if (tab === 'dossier') {
+        setActiveTab('dossier');
+        setDossierInput(input);
+        setDossierResult(null);
+      } else if (tab === 'burst') {
+        setActiveTab('burst');
+        setBurstInput(input);
+        setParsedCases(null);
+        setParseError(null);
+        setBurstResult(null);
+      } else {
+        return;
+      }
+      setWalkthroughNotice(`Walkthrough handoff loaded: ${tab} input is preloaded and remains editable before any live request.`);
+    } catch (error) {
+      console.warn('Unable to restore walkthrough AMD handoff', error);
+    } finally {
+      window.sessionStorage.removeItem('reliefqueue.walkthrough.amd.v1');
+    }
+  }, []);
 
   const historicalDeployment = capability?.historical_evidence?.deployment || null;
   const latestMetadata = lastVerifiedMetadata;
@@ -425,6 +457,11 @@ export function AmdImpact() {
         <p className="text-slate-500 mt-1">
           Frozen AMD/vLLM campaign evidence plus opt-in, nonce-bound verification of the current request path.
         </p>
+        {walkthroughNotice && (
+          <div data-testid="walkthrough-amd-handoff" className="mt-3 rounded-lg border border-purple-300 bg-purple-50 px-4 py-3 text-sm font-semibold text-purple-900">
+            {walkthroughNotice}
+          </div>
+        )}
       </div>
 
       <AmdEvidenceSummary

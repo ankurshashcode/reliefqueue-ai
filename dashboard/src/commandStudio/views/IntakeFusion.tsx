@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { readJsonResponse } from '../lib/httpJson';
 import { Bot, Link as LinkIcon, AlertTriangle, ShieldAlert, FileText, Share2, Check, Smartphone, MessageSquare, Zap, XCircle } from 'lucide-react';
@@ -24,6 +24,34 @@ export function IntakeFusion() {
   const [loading, setLoading] = useState(false);
   const [advisoryLoading, setAdvisoryLoading] = useState(false);
   const [advisoryError, setAdvisoryError] = useState<string | null>(null);
+  const [walkthroughMessage, setWalkthroughMessage] = useState<any | null>(null);
+  const [walkthroughNotice, setWalkthroughNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    const raw = window.sessionStorage.getItem('reliefqueue.walkthrough.intake.v1');
+    if (!raw) return;
+    try {
+      const handoff = JSON.parse(raw);
+      const message = handoff?.message;
+      if (!message?.text) return;
+      setWalkthroughMessage(message);
+      setSelectedRaw(message.id);
+      setNormalizedMsg({
+        ...(handoff.result || {}),
+        provider: handoff.result?.provider || message.provider,
+        external_id: handoff.result?.external_id || message.external_id,
+        urgency: handoff.result?.urgency || 'High',
+        needType: handoff.result?.needType || handoff.result?.need_type || 'rescue_medical',
+        original: message,
+      });
+      setWalkthroughNotice('Walkthrough Step 1 handoff loaded: the exact synthetic report and normalization result are selected below.');
+      addLog('Walkthrough Intake Handoff', `Loaded ${message.id} into AI Intake.`);
+    } catch (error) {
+      console.warn('Unable to restore walkthrough intake handoff', error);
+    } finally {
+      window.sessionStorage.removeItem('reliefqueue.walkthrough.intake.v1');
+    }
+  }, [addLog]);
 
   const handleNormalize = async (msg: any) => {
     setLoading(true);
@@ -76,6 +104,7 @@ export function IntakeFusion() {
     setSelectedRaw(null);
   };
 
+  const rawMessages = walkthroughMessage ? [walkthroughMessage, ...RAW_MESSAGES] : RAW_MESSAGES;
   const originalText = String(normalizedMsg?.original?.text || '');
   const sanitizedInput = advisoryResult?.sanitized_input || sanitizePreview(originalText);
   const normalizedRecord = advisoryResult?.normalized_structured_record || {
@@ -111,12 +140,17 @@ export function IntakeFusion() {
       <div className="mb-6 flex-shrink-0">
         <h2 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">AI Intake Fusion</h2>
         <p className="text-slate-500 mt-1 md:mt-2 text-sm md:text-base">Normalize messy inbound reports, then request source-grounded AMD analysis with visible provenance.</p>
+        {walkthroughNotice && (
+          <div data-testid="walkthrough-intake-handoff" className="mt-3 rounded-lg border border-blue-300 bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-900">
+            {walkthroughNotice}
+          </div>
+        )}
       </div>
 
       <div className="flex-1 flex flex-col md:flex-row gap-6 overflow-hidden">
         <div className="w-full md:w-1/2 lg:w-1/3 flex flex-col gap-4 overflow-y-auto pr-2">
           <h3 className="font-bold text-slate-700 tracking-wider text-xs border-b border-slate-200 pb-2">Raw Inbound Queue</h3>
-          {RAW_MESSAGES.map(msg => (
+          {rawMessages.map(msg => (
             <div key={msg.id} className={`bg-white border rounded-lg p-4 shadow-sm transition-all ${selectedRaw === msg.id ? 'ring-2 ring-rq-primary border-rq-primary bg-blue-50/10' : 'border-slate-200 hover:border-slate-300'}`}>
               <div className="flex justify-between items-start mb-2">
                 <span className="inline-flex items-center gap-1.5 px-2 py-1 bg-slate-100 text-slate-600 rounded text-[10px] font-mono font-bold">

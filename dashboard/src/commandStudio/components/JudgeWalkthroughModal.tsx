@@ -3,6 +3,7 @@ import { X, Play, Cpu, Bot, UserCheck, Smartphone, CheckCircle, RefreshCw, Hash,
 import { useApp } from '../context/AppContext';
 import { actionLog } from '../lib/actionLog';
 import { postProduct, actionKey } from '../lib/productActions';
+import { readJsonResponse } from '../lib/httpJson';
 
 interface AmdResult {
   verified_live: boolean;
@@ -45,6 +46,15 @@ interface IntakeResult {
   [key: string]: unknown;
 }
 
+const WALKTHROUGH_INTAKE_KEY = 'reliefqueue.walkthrough.intake.v1';
+const WALKTHROUGH_ASSIGNMENT_KEY = 'reliefqueue.walkthrough.assignment.v1';
+const WALKTHROUGH_AMD_KEY = 'reliefqueue.walkthrough.amd.v1';
+
+function saveWalkthroughHandoff(key: string, payload: unknown) {
+  if (typeof window === 'undefined') return;
+  window.sessionStorage.setItem(key, JSON.stringify(payload));
+}
+
 export function JudgeWalkthroughModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const { navigate, addLog } = useApp();
   const [activeStep, setActiveStep] = useState(1);
@@ -64,10 +74,14 @@ export function JudgeWalkthroughModal({ isOpen, onClose }: { isOpen: boolean; on
   const [step3Result, setStep3Result] = useState<AmdResult | null>(null);
 
   // Step 4 — AMD complex dossier
+  const [step4Input, setStep4Input] = useState('');
+  const [step4Consent, setStep4Consent] = useState(false);
   const [step4Loading, setStep4Loading] = useState(false);
   const [step4Result, setStep4Result] = useState<AmdResult | null>(null);
 
   // Step 5 — AMD burst workload
+  const [step5Input, setStep5Input] = useState('');
+  const [step5Consent, setStep5Consent] = useState(false);
   const [step5Loading, setStep5Loading] = useState(false);
   const [step5Result, setStep5Result] = useState<BurstResult | null>(null);
 
@@ -79,8 +93,6 @@ export function JudgeWalkthroughModal({ isOpen, onClose }: { isOpen: boolean; on
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [isOpen, onClose]);
-
-  if (!isOpen) return null;
 
   const runStep1 = async () => {
     setStep1Loading(true);
@@ -98,8 +110,20 @@ export function JudgeWalkthroughModal({ isOpen, onClose }: { isOpen: boolean; on
         { normalized: true, urgency: 'High', needType: 'rescue_medical', human_review_required: true }
       ) as IntakeResult;
       setStep1Result(result);
-      actionLog.add('Judge Demo Walkthrough', 'Demo Execution', 'Success', { step: 1, name: 'Synthetic Intake Burst' });
-      addLog('Step 1 Complete', 'Synthetic intake burst processed via real product API.');
+      saveWalkthroughHandoff(WALKTHROUGH_INTAKE_KEY, {
+        message: {
+          id: 'WALKTHROUGH-RM-001',
+          provider: 'local_mock',
+          source: 'walkthrough_demo',
+          text: 'Urgent: family of 5 stranded near north sector bridge. Need rescue and medicine. No clean water.',
+          time: new Date().toLocaleTimeString(),
+          confidence: 'High',
+          external_id: String(result.external_id || 'walkthrough-step1'),
+        },
+        result,
+      });
+      actionLog.add('Judge Demo Walkthrough', 'Demo Execution', 'Success', { step: 1, name: 'Synthetic Intake Report' });
+      addLog('Step 1 Complete', 'Synthetic intake report normalized and prepared for handoff to AI Intake.');
     } catch (err: any) {
       setStep1Result({ normalized: false, error: err?.message });
     } finally {
@@ -122,8 +146,12 @@ export function JudgeWalkthroughModal({ isOpen, onClose }: { isOpen: boolean; on
         }
       ) as IntakeResult;
       setStep2Result(result);
+      saveWalkthroughHandoff(WALKTHROUGH_ASSIGNMENT_KEY, {
+        case_id: 'RQ-1042',
+        advisory: result,
+      });
       actionLog.add('Judge Demo Walkthrough', 'Demo Execution', 'Success', { step: 2, name: 'Deterministic Workflow Advisory' });
-      addLog('Step 2 Complete', 'Deterministic workflow advisory retrieved; this is not the live AMD path.');
+      addLog('Step 2 Complete', 'Deterministic advisory prepared for direct handoff to RQ-1042 in Assignments.');
     } catch (err: any) {
       setStep2Result({ error: err?.message });
     } finally {
@@ -140,7 +168,7 @@ export function JudgeWalkthroughModal({ isOpen, onClose }: { isOpen: boolean; on
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: step3Input, workload_mode: 'single', synthetic_confirmed: true }),
       });
-      const data: AmdResult = await res.json();
+      const data = await readJsonResponse<AmdResult>(res, 'Walkthrough live AMD incident');
       setStep3Result(data);
       const live = data.verified_live && !data.fallback_used;
       actionLog.add('Judge Demo Walkthrough', 'AMD Live — Your Incident', live ? 'VERIFIED LIVE' : 'Failed', {
@@ -167,9 +195,9 @@ export function JudgeWalkthroughModal({ isOpen, onClose }: { isOpen: boolean; on
       const res = await fetch('/api/ai/live-verification', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: DOSSIER_SAMPLE, workload_mode: 'complex_dossier', synthetic_confirmed: true }),
+        body: JSON.stringify({ text: step4Input, workload_mode: 'complex_dossier', synthetic_confirmed: true }),
       });
-      const data: AmdResult = await res.json();
+      const data = await readJsonResponse<AmdResult>(res, 'Walkthrough complex dossier');
       setStep4Result(data);
       const live = data.verified_live && !data.fallback_used;
       actionLog.add('Judge Demo Walkthrough', 'AMD Live — Complex Dossier', live ? 'VERIFIED LIVE' : 'Failed', {
@@ -190,29 +218,52 @@ export function JudgeWalkthroughModal({ isOpen, onClose }: { isOpen: boolean; on
     { id: 'burst-4', text: 'Chest pain at pump station area. 6 people stranded, 1 possible cardiac event.' },
   ];
 
+  useEffect(() => {
+    if (!step4Input) setStep4Input(DOSSIER_SAMPLE);
+    if (!step5Input) setStep5Input(BURST_SAMPLE.map(item => JSON.stringify(item)).join('\n'));
+  }, []);
+
+  if (!isOpen) return null;
+
   const runStep5 = async () => {
+    if (!step5Consent || !step5Input.trim()) return;
     setStep5Loading(true);
     setStep5Result(null);
     try {
+      const parseResponse = await fetch('/api/ai/burst-parse', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: step5Input }),
+      });
+      const parsed = await readJsonResponse<{ cases: { id: string; text: string }[] }>(parseResponse, 'Walkthrough burst parser');
       const res = await fetch('/api/ai/burst-verification', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reports: BURST_SAMPLE, concurrency: 2, synthetic_confirmed: true }),
+        body: JSON.stringify({ reports: parsed.cases, concurrency: 2, synthetic_confirmed: true }),
       });
-      const data: BurstResult = await res.json();
+      const data = await readJsonResponse<BurstResult>(res, 'Walkthrough live AMD burst');
       setStep5Result(data);
       actionLog.add('Judge Demo Walkthrough', 'AMD Burst Workload', 'Complete', {
         step: 5, batch_id: data.batch_id, succeeded: data.succeeded, submitted: data.submitted,
       });
       addLog(`Step 5 — Burst ${data.succeeded}/${data.submitted} live`, `Batch ${data.batch_id} · ${data.total_elapsed_ms} ms total`);
     } catch (err: any) {
+      addLog('Step 5 — Burst Failed', err?.message || 'Burst request failed.');
       alert(`Burst failed: ${err?.message}`);
     } finally {
       setStep5Loading(false);
     }
   };
 
-  const navigateStep = (route: string) => { navigate(route); onClose(); };
+  const navigateStep = (route: any) => { navigate(route); onClose(); };
+  const openFieldTask = () => {
+    onClose();
+    window.location.assign('/field/cases/RQ-1042');
+  };
+  const openAmdHandoff = (payload: Record<string, unknown>) => {
+    saveWalkthroughHandoff(WALKTHROUGH_AMD_KEY, payload);
+    navigateStep('amd');
+  };
 
   const step3Verified = step3Result?.verified_live === true && step3Result?.fallback_used === false;
   const step4Verified = step4Result?.verified_live === true && step4Result?.fallback_used === false;
@@ -243,8 +294,8 @@ export function JudgeWalkthroughModal({ isOpen, onClose }: { isOpen: boolean; on
 
           {/* Step 1 — Synthetic Intake */}
           <StepCard id={1} activeStep={activeStep} onSelect={() => setActiveStep(1)} icon={Play}
-            name="Step 1: Synthetic Intake Burst"
-            desc="Process an incoming synthetic SMS report to show multi-source normalization."
+            name="Step 1: Synthetic Intake Report"
+            desc="Normalize one synthetic SMS report, then hand the exact report and result into AI Intake."
           >
             {activeStep === 1 && (
               <div className="mt-4 pt-4 border-t border-slate-100">
@@ -253,7 +304,7 @@ export function JudgeWalkthroughModal({ isOpen, onClose }: { isOpen: boolean; on
                     className="bg-slate-900 hover:bg-slate-800 text-white font-semibold py-2 px-6 rounded-lg text-sm flex items-center gap-2 disabled:opacity-50">
                     {step1Loading ? <><RefreshCw className="w-4 h-4 animate-spin" /> Running…</> : <><Play className="w-4 h-4" /> Run Step</>}
                   </button>
-                  {step1Result && <button type="button" onClick={() => navigateStep('intake')} className="text-xs text-rq-primary hover:underline">Open Intake view →</button>}
+                  {step1Result && <button data-testid="walkthrough-step1-open-intake" type="button" onClick={() => navigateStep('intake')} className="text-xs text-rq-primary hover:underline">Open this report in AI Intake →</button>}
                 </div>
                 {step1Result && (
                   <div className="mt-3 bg-white rounded-lg border border-slate-200 p-3 text-xs font-mono text-slate-700 space-y-1">
@@ -270,7 +321,7 @@ export function JudgeWalkthroughModal({ isOpen, onClose }: { isOpen: boolean; on
           {/* Step 2 — deterministic workflow advisory, not live AMD */}
           <StepCard id={2} activeStep={activeStep} onSelect={() => setActiveStep(2)} icon={Cpu}
             name="Step 2: Deterministic Workflow Advisory"
-            desc="Retrieve the deterministic product-workflow advisory for RQ-1042. This demonstrates the review workflow and is not the live AMD inference path."
+            desc="Retrieve the deterministic product-workflow advisory for RQ-1042. This demonstrates the review workflow and is not the live AMD path."
           >
             {activeStep === 2 && (
               <div className="mt-4 pt-4 border-t border-slate-100">
@@ -279,7 +330,7 @@ export function JudgeWalkthroughModal({ isOpen, onClose }: { isOpen: boolean; on
                     className="bg-slate-900 hover:bg-slate-800 text-white font-semibold py-2 px-6 rounded-lg text-sm flex items-center gap-2 disabled:opacity-50">
                     {step2Loading ? <><RefreshCw className="w-4 h-4 animate-spin" /> Running…</> : <><Play className="w-4 h-4" /> Run Step</>}
                   </button>
-                  {step2Result && <button type="button" onClick={() => navigateStep('intake')} className="text-xs text-rq-primary hover:underline">Open Intake view →</button>}
+                  {step2Result && <button data-testid="walkthrough-step2-open-assignment" type="button" onClick={() => navigateStep('assignments')} className="text-xs text-rq-primary hover:underline">Open RQ-1042 advisory in Assignments →</button>}
                 </div>
                 {step2Result && (
                   <div className="mt-3 bg-white rounded-lg border border-slate-200 p-3 text-xs font-mono text-slate-700 space-y-1">
@@ -322,7 +373,7 @@ export function JudgeWalkthroughModal({ isOpen, onClose }: { isOpen: boolean; on
                     className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2 px-6 rounded-lg text-sm flex items-center gap-2 disabled:opacity-50">
                     {step3Loading ? <><RefreshCw className="w-4 h-4 animate-spin" /> Attempting live verification…</> : <><Zap className="w-4 h-4" /> Attempt Live AMD Analysis</>}
                   </button>
-                  {step3Result && <button type="button" onClick={() => navigateStep('amd')} className="text-xs text-rq-primary hover:underline">Open AMD Impact →</button>}
+                  {step3Result && <button type="button" onClick={() => openAmdHandoff({ tab: 'single', input: step3Input })} className="text-xs text-rq-primary hover:underline">Open this incident in AMD Impact →</button>}
                 </div>
 
                 {step3Result && (
@@ -364,15 +415,24 @@ export function JudgeWalkthroughModal({ isOpen, onClose }: { isOpen: boolean; on
           >
             {activeStep === 4 && (
               <div className="mt-4 pt-4 border-t border-slate-100">
-                <div className="bg-slate-50 rounded-lg border border-slate-200 p-2.5 mb-3 text-[10px] font-mono text-slate-600 max-h-32 overflow-y-auto leading-relaxed whitespace-pre-wrap">
-                  {DOSSIER_SAMPLE}
-                </div>
+                <textarea
+                  data-testid="walkthrough-dossier-input"
+                  value={step4Input}
+                  onChange={event => setStep4Input(event.target.value)}
+                  rows={8}
+                  className="w-full rounded-lg border border-slate-200 bg-slate-50 p-2.5 mb-3 text-[10px] font-mono text-slate-700 focus:outline-none focus:ring-1 focus:ring-purple-400 resize-y"
+                  placeholder="Paste or edit a synthetic dossier here…"
+                />
+                <label className="mb-3 flex items-start gap-2 text-[11px] text-slate-600">
+                  <input type="checkbox" checked={step4Consent} onChange={event => setStep4Consent(event.target.checked)} className="mt-0.5" />
+                  I confirm this dossier is synthetic demonstration data and contains no real personal information.
+                </label>
                 <div className="flex items-center justify-between gap-3 mb-3">
-                  <button type="button" disabled={step4Loading} onClick={runStep4}
+                  <button type="button" disabled={step4Loading || !step4Consent || !step4Input.trim()} onClick={runStep4}
                     className="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-6 rounded-lg text-sm flex items-center gap-2 disabled:opacity-50">
                     {step4Loading ? <><RefreshCw className="w-4 h-4 animate-spin" /> Processing dossier…</> : <><Zap className="w-4 h-4" /> Attempt Live Dossier Analysis</>}
                   </button>
-                  {step4Result && <button type="button" onClick={() => navigateStep('amd')} className="text-xs text-rq-primary hover:underline">Open AMD Impact →</button>}
+                  <button data-testid="walkthrough-step4-open-amd" type="button" onClick={() => openAmdHandoff({ tab: 'dossier', input: step4Input })} className="text-xs text-rq-primary hover:underline">Continue with this dossier in AMD Impact →</button>
                 </div>
 
                 {step4Result && (
@@ -407,15 +467,24 @@ export function JudgeWalkthroughModal({ isOpen, onClose }: { isOpen: boolean; on
           >
             {activeStep === 5 && (
               <div className="mt-4 pt-4 border-t border-slate-100">
-                <div className="text-[10px] text-slate-500 font-mono mb-3">
-                  {BURST_SAMPLE.map(c => <div key={c.id}><strong>{c.id}:</strong> {c.text}</div>)}
-                </div>
+                <textarea
+                  data-testid="walkthrough-burst-input"
+                  value={step5Input}
+                  onChange={event => setStep5Input(event.target.value)}
+                  rows={7}
+                  className="w-full rounded-lg border border-slate-200 bg-slate-50 p-2.5 mb-3 text-[10px] font-mono text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-400 resize-y"
+                  placeholder="Paste or edit synthetic JSONL/JSON/blank-line-separated reports here…"
+                />
+                <label className="mb-3 flex items-start gap-2 text-[11px] text-slate-600">
+                  <input type="checkbox" checked={step5Consent} onChange={event => setStep5Consent(event.target.checked)} className="mt-0.5" />
+                  I confirm every report is synthetic demonstration data and contains no real personal information.
+                </label>
                 <div className="flex items-center justify-between gap-3 mb-3">
-                  <button type="button" disabled={step5Loading} onClick={runStep5}
+                  <button type="button" disabled={step5Loading || !step5Consent || !step5Input.trim()} onClick={runStep5}
                     className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg text-sm flex items-center gap-2 disabled:opacity-50">
                     {step5Loading ? <><RefreshCw className="w-4 h-4 animate-spin" /> Running burst…</> : <><Zap className="w-4 h-4" /> Attempt Live AMD Burst</>}
                   </button>
-                  {step5Result && <button type="button" onClick={() => navigateStep('amd')} className="text-xs text-rq-primary hover:underline">Open AMD Impact →</button>}
+                  <button data-testid="walkthrough-step5-open-amd" type="button" onClick={() => openAmdHandoff({ tab: 'burst', input: step5Input })} className="text-xs text-rq-primary hover:underline">Continue with this burst in AMD Impact →</button>
                 </div>
 
                 {step5Result && (
@@ -477,9 +546,9 @@ export function JudgeWalkthroughModal({ isOpen, onClose }: { isOpen: boolean; on
           >
             {activeStep === 7 && (
               <div className="mt-4 pt-4 border-t border-slate-100 flex justify-end">
-                <button type="button" onClick={() => navigateStep('sync')}
+                <button data-testid="walkthrough-step7-open-field-task" type="button" onClick={openFieldTask}
                   className="bg-slate-900 hover:bg-slate-800 text-white font-semibold py-2 px-6 rounded-lg text-sm flex items-center gap-2">
-                  <Play className="w-4 h-4" /> Open Field View
+                  <Play className="w-4 h-4" /> Open Field Coordinator Task RQ-1042
                 </button>
               </div>
             )}
@@ -500,6 +569,7 @@ function StepCard({
   const isDone = activeStep > id;
   return (
     <div
+      data-testid={`walkthrough-step-${id}`}
       className={`bg-white border rounded-xl p-4 transition-all cursor-pointer ${
         isActive
           ? highlight ? 'border-emerald-500 ring-1 ring-emerald-500 shadow-md' : 'border-rq-primary ring-1 ring-rq-primary shadow-md'

@@ -24,7 +24,8 @@
     "prepare-public-data": "node scripts/preparePublicData.mjs",
     "replit-navigation-smoke": "node scripts/replitNavigationCheck.mjs",
     "amd-evidence-ui-check": "node scripts/amdEvidenceUiCheck.mjs",
-    "judge-front-door-check": "node scripts/judgeFrontDoorCheck.mjs"
+    "judge-front-door-check": "node scripts/judgeFrontDoorCheck.mjs",
+    "judge-walkthrough-check": "node scripts/judgeWalkthroughCheck.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-react": "^5.0.4",

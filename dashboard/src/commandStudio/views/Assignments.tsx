@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { AlertTriangle, Clock, Bot, Printer } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { DetailDrawer } from '../components/Shared';
@@ -39,8 +39,40 @@ export function Assignments() {
   const [assignmentResult, setAssignmentResult] = useState('No assignment mutation has been requested.');
   const [statusResult, setStatusResult] = useState('No status mutation has been requested.');
   const [messageResult, setMessageResult] = useState('Local/mock outbox is ready; no message has been queued.');
+  const [walkthroughNotice, setWalkthroughNotice] = useState<string | null>(null);
 
   const selectedTask = tasks.find((task) => task.id === selectedTaskId);
+
+  useEffect(() => {
+    const raw = window.sessionStorage.getItem('reliefqueue.walkthrough.assignment.v1');
+    if (!raw) return;
+    try {
+      const handoff = JSON.parse(raw);
+      const caseId = String(handoff?.case_id || 'RQ-1042');
+      const task = INITIAL_TASKS.find(item => item.id === caseId);
+      if (!task) return;
+      const response = handoff?.advisory || {};
+      setSelectedTaskId(caseId);
+      setAdvisoryData({
+        summary: response.summary || response.safe_summary || `Review ${caseId}.`,
+        priority: task.urgent ? 'CRITICAL' : 'HIGH',
+        needType: 'Logistics',
+        locationConfidence: 'Medium',
+        inferenceMode: 'Deterministic Local Advisory',
+        providerStatus: 'Not contacted',
+        latency: 'Local · no provider call',
+        warnings: ['Coordinator approval required before any field action.'],
+        questions: ['Confirm the latest field status before assignment.'],
+      });
+      setAdvisoryOpen(true);
+      setWalkthroughNotice(`Walkthrough Step 2 handoff loaded: ${caseId} and its deterministic advisory are open for review.`);
+      addLog('Walkthrough Assignment Handoff', `Opened ${caseId} deterministic advisory.`);
+    } catch (error) {
+      console.warn('Unable to restore walkthrough assignment handoff', error);
+    } finally {
+      window.sessionStorage.removeItem('reliefqueue.walkthrough.assignment.v1');
+    }
+  }, [addLog]);
 
   const getTasksByStatus = (status: string) => tasks.filter((task) => task.status === status);
 
@@ -138,6 +170,11 @@ export function Assignments() {
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Task Assignment Suggestions</h1>
           <p className="text-slate-500 mt-1 text-sm md:text-base">Review AI advisory triage and assignments. Coordinator approval required.</p>
+          {walkthroughNotice && (
+            <div data-testid="walkthrough-assignment-handoff" className="mt-3 rounded-lg border border-blue-300 bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-900">
+              {walkthroughNotice}
+            </div>
+          )}
         </div>
         <button onClick={() => window.print()} aria-label="Print assignment roster" className="no-print inline-flex items-center gap-2 rounded bg-white border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
           <Printer className="w-4 h-4" /> Print Roster
@@ -227,7 +264,7 @@ export function Assignments() {
               <button data-action-id="command.assign_or_reassign_worker" type="button" onClick={assignWorker} className="py-3 rounded-lg bg-rq-primary text-white font-semibold">Assign Alpha</button>
               <button data-action-id="command.set_case_in_progress" type="button" onClick={setInProgress} className="py-3 rounded-lg bg-slate-900 text-white font-semibold">Set in progress</button>
               <button data-action-id="command.queue_local_message" type="button" onClick={queueMessage} className="py-3 rounded-lg border border-slate-300 bg-white text-slate-800 font-semibold">Queue message</button>
-              <button data-action-id="command.request_review_required_ai_advisory" type="button" onClick={requestAdvisory} className="py-3 rounded-lg border border-emerald-500 bg-emerald-50 text-emerald-800 font-semibold">Request AI advisory</button>
+              <button data-action-id="command.request_review_required_ai_advisory" type="button" onClick={requestAdvisory} className="py-3 rounded-lg border border-emerald-500 bg-emerald-50 text-emerald-800 font-semibold">Run deterministic advisory</button>
               <button data-action-id="command.paid_sms_disabled" type="button" disabled className="sm:col-span-2 py-3 rounded-lg border border-slate-300 bg-slate-100 text-slate-500 font-semibold cursor-not-allowed">Paid SMS / WhatsApp provider disabled until configured</button>
             </div>
 
